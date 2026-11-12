@@ -255,7 +255,17 @@ const PANELS = {
     <h4>כתוביות בסרטון (${cues.length})</h4><div class="col">${cues.map(c => `<button type="button" class="cue${c.id === S.sel ? ' on' : ''}" data-a="cue" data-v="${c.id}"><small>${fmtT(c.start)}</small><span>${esc(c.text)}</span></button>`).join('') || '<p class="hint">עדיין אין כתוביות.</p>'}</div>`;
   },
   brand() {
-    return `<h4>הלוגו של AI Finance</h4><div class="col">
+    const b = S.brand, lg = S.media.get('logoMark') || S.media.get('logo') || {};
+    return `<h4>ערכת המותג</h4>
+    <div class="mi"><div class="th" style="background-image:url('${lg.thumb || ''}');background-size:contain;background-color:${esc(b.color)}"></div><div class="nm"><b>${b.custom ? 'הלוגו שלך' : 'לוגו AI Finance'}</b><small>מופיע בתג הפינה, בפתיח ובסיומת</small></div></div>
+    <div class="rowf" style="margin-top:6px"><label class="btn sm" for="logoIn" style="text-align:center;cursor:pointer">החלפת לוגו</label>${b.custom ? '<button type="button" class="btn sm" data-a="brReset">חזרה ל-AI Finance</button>' : ''}</div>
+    <p class="hint">הכי טוב קובץ PNG עם רקע שקוף. הלוגו נשמר במכשיר הזה.</p>
+    <label class="f two"><span>שם המותג</span><input class="in" id="brName" maxlength="40" value="${esc(b.name)}"></label>
+    <label class="f two"><span>סלוגן</span><textarea id="brTag" rows="2" maxlength="90">${esc(b.tagline)}</textarea></label>
+    <label class="f two"><span>קריאה לפעולה</span><input class="in" id="brCta" maxlength="30" value="${esc(b.cta)}"></label>
+    <label class="f two"><span>צבע רקע</span><input type="color" id="brColor" value="${esc(b.color)}"></label>
+    <label class="f two"><span>על המותג</span><textarea id="brAbout" rows="2" maxlength="300" placeholder="למי פונים ומה המסר. קלוד משתמש בזה כשהוא כותב">${esc(b.about)}</textarea></label>
+    <h4>הוספה לסרטון</h4><div class="col">
       <button type="button" class="btn" data-a="brIntro">פתיח עם הלוגו</button>
       <button type="button" class="btn" data-a="brOutro">סיומת עם הלוגו וקריאה לפעולה</button>
       <button type="button" class="btn" data-a="brBug">תג לוגו בפינה לכל אורך הסרטון</button></div>
@@ -281,6 +291,16 @@ $('#panel').addEventListener('input', e => {
   if (el.id === 'capFont') { S.p.cap.font = el.value; document.fonts && document.fonts.load('800 40px "' + el.value + '"').then(requestDraw); requestDraw(); }
 });
 $('#panel').addEventListener('change', e => { if (['capSize', 'capPos', 'capFont'].includes(e.target.id)) commit(); });
+// brand kit fields
+const BR_FIELDS = { brName: 'name', brTag: 'tagline', brCta: 'cta', brColor: 'color', brAbout: 'about' };
+$('#panel').addEventListener('input', e => { const k = BR_FIELDS[e.target.id]; if (!k) return; S.brand[k] = e.target.value; relayBrand(); requestDraw(); });
+$('#panel').addEventListener('change', e => { if (!BR_FIELDS[e.target.id]) return; if (!String(S.brand.name).trim()) S.brand.name = BRAND0.name; saveBrand(); commit(); });
+$('#logoIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|svg)$/i.test(f.name)) return toast('צריך קובץ תמונה: PNG, JPG או SVG');
+  if (!(await applyCustomLogo(f))) return toast('לא הצלחתי לקרוא את התמונה');
+  DB.putKV('brandLogo', f); saveBrand(); commit(); renderPanel(); toast('הלוגו הוחלף בכל הסרטון');
+});
 
 /* ===== clip creation ===== */
 function addClip(c, at) {
@@ -301,11 +321,7 @@ function addText(o) { const tr = firstTrack('text'); const c = addClip(mkText(Ob
 function setFmt(f, silent) {
   S.p.fmt = f; S.p.w = FORMATS[f][0]; S.p.h = FORMATS[f][1];
   // brand cards and the corner tag are laid out per format, so they follow a format change
-  S.p.clips.forEach(c => {
-    if (c.brand === 'card') { const n = brandCard({ dur: c.dur }); ['mediaId', 'fit', 'card', 'scale', 'x', 'y', 'kf'].forEach(k => c[k] = n[k]); }
-    else if (c.brand === 'bug') { const n = logoBug(c.trackId, c.dur); ['scale', 'x', 'y'].forEach(k => c[k] = n[k]); c.kf = []; }
-    else if (c.brand === 'tag') { const n = taglineClip({}); c.size = n.size; c.y = n.y; c.kf = []; }
-  });
+  relayBrand();
   setCanvas(); if (!silent) commit();
 }
 function demoProject() {
@@ -417,10 +433,10 @@ function addBug() {
 function addOutro() {
   const tid = firstTrack('video', true).id, at = Math.max(trackEnd(tid), S.p.clips.length ? projDur() : 0), d = 4, tx = firstTrack('text').id;
   S.p.clips.push(brandCard({ trackId: tid, start: at, dur: d, tin: 'fade' }));
-  S.p.clips.push(taglineClip({ trackId: tx, start: at + 0.4, dur: d - 0.4 }));
+  pushTag({ trackId: tx, start: at + 0.4, dur: d - 0.4 });
   let t2 = S.p.tracks.find(t => t.type === 'text' && t.id !== tx);
   if (!t2) { t2 = { id: uid(), type: 'text', name: 'טקסט 2' }; S.p.tracks.splice(S.p.tracks.findIndex(t => t.id === tx), 0, t2); }
-  S.p.clips.push(mkText({ brand: 'cta', trackId: t2.id, start: at + 0.8, dur: d - 0.8, text: 'הצטרפו לקהילה', size: isWide() ? 50 : 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: isWide() ? 0.41 : S.p.fmt === '1:1' ? 0.34 : 0.3, shadow: false, anim: 'slide' }));
+  S.p.clips.push(mkText({ brand: 'cta', autoCta: true, trackId: t2.id, start: at + 0.8, dur: d - 0.8, text: S.brand.cta || BRAND0.cta, size: isWide() ? 50 : 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: isWide() ? 0.41 : S.p.fmt === '1:1' ? 0.34 : 0.3, shadow: false, anim: 'slide' }));
   return at;
 }
 
@@ -487,11 +503,12 @@ const ACT = {
   brIntro() {
     const tid = firstTrack('video', true).id, d = 3; S.p.clips.forEach(c => { c.start += d; });
     S.p.clips.push(brandCard({ trackId: tid, start: 0, dur: d, tin: 'fade', tout: 'fade' }));
-    S.p.clips.push(taglineClip({ trackId: firstTrack('text').id, start: 0.5, dur: d - 0.5 }));
+    pushTag({ trackId: firstTrack('text').id, start: 0.5, dur: d - 0.5 });
     commit(); seek(1.5); toast('נוסף פתיח של 3 שניות עם הלוגו והסלוגן. שאר הקליפים זזו קדימה.');
   },
   brOutro() { const at = addOutro(); commit(); seek(at + 2); },
   brBug() { addBug(); commit(); toast('תג הלוגו נוסף בפינה. אפשר לגרור אותו על המסך.'); },
+  brReset() { resetLogo(); const keep = S.brand.custom; S.brand = Object.assign({}, BRAND0); DB.putKV('brandLogo', null); saveBrand(); relayBrand(); commit(); renderPanel(); toast('חזרנו למותג AI Finance'); },
   brCard() { const c = addClip(mkClip({ type: 'solid', trackId: firstTrack('video', true).id, dur: 4, color: BRAND.deep, grad: true }), 'end'); commit(); seek(c.start); },
   frame() { pause(); S.exporting = true; draw(); S.exporting = false; cv.toBlob(b => { requestDraw(); if (b) saveBlob(b, safeName() + '.png'); }, 'image/png'); },
   newProj() { modal(`<h3>פרויקט חדש</h3><p class="hint">ציר הזמן הנוכחי יימחק. הקבצים שהעלית נשארים בלשונית מדיה.</p><div class="rowf"><button type="button" class="btn primary" data-a="newProjGo">פתיחת פרויקט ריק</button><button type="button" class="btn" data-a="closeModal">ביטול</button></div>`); },
@@ -601,17 +618,54 @@ function buildLogoCuts(img) {
 // One branded card for openers and closers. Wide formats use the full logo artwork; tall and square
 // formats use the clear wordmark on the brand backdrop, because the artwork would be cropped there.
 const isWide = () => S.p.w / S.p.h >= 1.5;
+// size a logo by the room it may take, whatever its proportions: a share of the width, capped by height
+function logoScale(id, wFrac, hFrac) {
+  const m = S.media.get(id); if (!m || !m.w || !m.h) return { s: wFrac, wf: wFrac, hf: 0.1 };
+  const W = S.p.w, H = S.p.h, k = Math.min(wFrac * W / m.w, hFrac * H / m.h), contain = Math.min(W / m.w, H / m.h);
+  return { s: k / contain, wf: k * m.w / W, hf: k * m.h / H };
+}
 function brandCard(o) {
   const b = { x: 0, y: 0, rot: 0, opacity: 1 }, d = o.dur, kf = [Object.assign({ t: 0, scale: 1 }, b), Object.assign({ t: +d.toFixed(3), scale: 1.06 }, b)];
-  if (isWide()) return mkClip(Object.assign({ type: 'image', mediaId: 'logo', brand: 'card', fit: 'cover', card: false, kf }, o));
-  const s = S.p.w === S.p.h ? 0.84 : 0.9, y = -0.07;
-  return mkClip(Object.assign({ type: 'image', mediaId: 'logoFull', brand: 'card', fit: 'contain', card: true, scale: s, y, kf: kf.map(k => Object.assign(k, { y, scale: k.scale * s })) }, o));
+  if (isWide() && !S.brand.custom) return mkClip(Object.assign({ type: 'image', mediaId: 'logo', brand: 'card', fit: 'cover', card: false, scale: 1, x: 0, y: 0, kf }, o));
+  const s = logoScale('logoFull', isWide() ? 0.5 : S.p.w === S.p.h ? 0.84 : 0.9, 0.3).s, y = -0.07;
+  return mkClip(Object.assign({ type: 'image', mediaId: 'logoFull', brand: 'card', fit: 'contain', card: true, scale: s, x: 0, y, kf: kf.map(k => Object.assign(k, { y, scale: k.scale * s })) }, o));
 }
-const taglineClip = o => mkText(Object.assign({ brand: 'tag', text: TAGLINE, size: isWide() ? 40 : 54, weight: 500, color: '#FFFFFF', y: isWide() ? 0.25 : S.p.fmt === '1:1' ? 0.17 : S.p.fmt === '4:5' ? 0.14 : 0.1, anim: 'fade', shadow: true }, o));
+function taglineClip(o) {
+  const base = isWide() ? (S.brand.custom ? 0.2 : 0.25) : S.p.fmt === '1:1' ? 0.17 : S.p.fmt === '4:5' ? 0.14 : 0.1;
+  // a tall replacement logo pushes the tagline down, so the two never touch
+  const under = S.brand.custom ? -0.07 + logoScale('logoFull', isWide() ? 0.5 : S.p.w === S.p.h ? 0.84 : 0.9, 0.3).hf / 2 + 0.075 : 0;
+  return mkText(Object.assign({ brand: 'tag', text: S.brand.tagline, size: isWide() ? 40 : 54, weight: 500, color: '#FFFFFF', y: +Math.max(base, under).toFixed(3), anim: 'fade', shadow: true }, o));
+}
+// a brand with no tagline simply has none on its cards
+function pushTag(o) { if (String(S.brand.tagline || '').trim()) S.p.clips.push(taglineClip(o)); }
 function logoBug(trackId, dur) {
-  const v = S.p.h > S.p.w, sq = S.p.h === S.p.w;
-  return mkClip({ type: 'image', mediaId: 'logoMark', brand: 'bug', trackId, start: 0, dur, fit: 'contain', scale: v ? 0.34 : sq ? 0.3 : 0.2, x: v ? 0.29 : sq ? 0.31 : 0.375, y: S.p.fmt === '9:16' ? -0.4 : v ? -0.43 : sq ? -0.42 : -0.4, opacity: 0.95 });
+  const v = S.p.h > S.p.w, sq = S.p.h === S.p.w, k = logoScale('logoMark', v ? 0.34 : sq ? 0.3 : 0.2, 0.085);
+  return mkClip({ type: 'image', mediaId: 'logoMark', brand: 'bug', trackId, start: 0, dur, fit: 'contain', scale: k.s, x: +(0.46 - k.wf / 2).toFixed(3), y: S.p.fmt === '9:16' ? -0.4 : v ? -0.43 : sq ? -0.42 : -0.4, opacity: 0.95 });
 }
+// re-lay every brand element: after a format change, or when the brand kit itself changes
+function relayBrand() {
+  S.p.clips.forEach(c => {
+    if (c.brand === 'card') { const n = brandCard({ dur: c.dur }); ['mediaId', 'fit', 'card', 'scale', 'x', 'y', 'kf'].forEach(k => c[k] = n[k]); }
+    else if (c.brand === 'bug') { const n = logoBug(c.trackId, c.dur); ['scale', 'x', 'y'].forEach(k => c[k] = n[k]); c.kf = []; }
+    else if (c.brand === 'tag') { const n = taglineClip({}); c.size = n.size; c.y = n.y; c.text = n.text; c.kf = []; }
+    else if (c.brand === 'cta' && c.autoCta) c.text = S.brand.cta || BRAND0.cta;
+  });
+  S.p.clips = S.p.clips.filter(c => !(c.brand === 'tag' && !String(c.text || '').trim()));
+}
+let LOGO0 = null;
+function setLogoMedia(img, custom) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  ['logo', 'logoMark', 'logoFull'].forEach(id => S.media.set(id, { id, name: id === 'logo' ? 'הלוגו שלך' : id === 'logoMark' ? 'הלוגו שלך, תג' : 'הלוגו שלך, כרטיס', kind: 'image', builtin: true, custom, img, url: img.src, thumb: img.src, w, h, duration: 4, blob: { size: 0 } }));
+}
+function applyCustomLogo(blob) {
+  return new Promise(res => { const img = new Image(); img.onload = () => { setLogoMedia(img, true); S.brand.custom = true; relayBrand(); requestDraw(); res(true); }; img.onerror = () => res(false); img.src = URL.createObjectURL(blob); });
+}
+function resetLogo() {
+  S.brand.custom = false; if (!LOGO0) return;
+  S.media.set('logo', { id: 'logo', name: 'לוגו AI Finance', kind: 'image', builtin: true, img: LOGO0, url: 'assets/logo.jpg', thumb: 'assets/logo.jpg', w: LOGO0.naturalWidth, h: LOGO0.naturalHeight, duration: 4, blob: { size: 0 } });
+  buildLogoCuts(LOGO0);
+}
+function saveBrand() { const b = Object.assign({}, S.brand); DB.putKV('brand', JSON.stringify(b)); }
 // Split a script into caption cues: never across a sentence end, and never a lone trailing word.
 function chunkText(s, n) {
   const out = [];
@@ -628,11 +682,13 @@ function chunkText(s, n) {
 async function boot() {
   const img = new Image(); img.src = 'assets/logo.jpg';
   const logo = { id: 'logo', name: 'לוגו AI Finance', kind: 'image', builtin: true, img, url: 'assets/logo.jpg', thumb: 'assets/logo.jpg', w: 1600, h: 1247, duration: 4, blob: { size: 0 } };
-  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; buildLogoCuts(img); requestDraw(); if (typeof renderPanel === 'function') renderPanel(); };
+  LOGO0 = img;
+  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; if (!S.brand.custom) buildLogoCuts(img); requestDraw(); if (typeof renderPanel === 'function') renderPanel(); };
   S.media.set('logo', logo);
   S.p = demoProject(); let restored = false;
   try {
     await DB.open(); const { pj, rows } = await DB.load();
+    try { const bj = await DB.getKV('brand'); if (bj) S.brand = Object.assign({}, BRAND0, JSON.parse(bj), { custom: false }); const lb = await DB.getKV('brandLogo'); if (lb) await applyCustomLogo(lb); } catch (e) { }
     for (const r of rows) { try { const m = await buildMedia(r); S.media.set(m.id, m); } catch (e) { } }
     if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) { S.p = normalizeProject(pj); restored = true; }
   } catch (e) { }

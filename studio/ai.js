@@ -1,5 +1,12 @@
 'use strict';
 /* ===== AI studio: create, edit, critique, trends ===== */
+// Who Claude is writing for. AI Finance by default; a replaced brand speaks for itself.
+function brandCtx() {
+  const b = S.brand;
+  if (b.name === BRAND0.name && !String(b.about).trim()) return 'AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI"';
+  return 'the brand "' + b.name + '"' + (String(b.tagline).trim() ? ', whose tagline is "' + String(b.tagline).replace(/\s+/g, ' ').trim() + '"' : '') + (String(b.about).trim() ? '. Its owner describes the brand and its audience as: ' + String(b.about).trim() : '') + '. Write for that audience and in that spirit';
+}
+const brandIsDefault = () => S.brand.name === BRAND0.name && !String(S.brand.about).trim();
 let aiSec = 'make', aiCrit = null, aiStatus = '', aiPost = '', aiTpl = 'problem', aiFmt = '9:16', aiLen = 30;
 const TRENDS_DATE = '12.11.2026';
 const TREND_RULES = [
@@ -38,7 +45,7 @@ function projectBrief() {
 function buildFromPlan(plan, fmt) {
   const p = newProject(); p.name = String(plan.title || 'סרטון חדש').slice(0, 60); p.fmt = fmt; p.w = FORMATS[fmt][0]; p.h = FORMATS[fmt][1];
   p.cap.style = 'karaoke'; p.cap.size = fmt === '16:9' ? 54 : 62;
-  const tall = p.h > p.w, bgs = [BRAND.deep, BRAND.ink, '#0A2390']; let t = 0;
+  const tall = p.h > p.w, bgs = S.brand.color !== BRAND.deep ? [S.brand.color, S.brand.color, S.brand.color] : [BRAND.deep, BRAND.ink, '#0A2390']; let t = 0;
   const zoom = d => [{ t: 0, x: 0, y: 0, scale: 1, rot: 0, opacity: 1 }, { t: +d.toFixed(3), x: 0, y: 0, scale: 1.06, rot: 0, opacity: 1 }];
   (plan.scenes || []).slice(0, 12).forEach((s, i) => {
     const d = clamp(+s.seconds || 4, 1.5, 12), hook = i === 0, hasBody = !!(s.body && String(s.body).trim());
@@ -62,19 +69,19 @@ function buildFromPlan(plan, fmt) {
   if (t > 0) p.clips.push(logoBug('bug', t));
   // closing card: the logo and the community's promise, in every format
   p.clips.push(brandCard({ trackId: 'v1', start: t, dur: 3, tin: 'fade' }));
-  p.clips.push(taglineClip({ trackId: 'txt', start: t + 0.5, dur: 2.5 }));
+  pushTag({ trackId: 'txt', start: t + 0.5, dur: 2.5 });
   S.sel = null; setCanvas(); seek(0.5); commit();
 }
 async function aiMake() {
   const brief = ($('#aiBrief') ? $('#aiBrief').value : '').trim(); if (!brief) return toast('כתבי על מה הסרטון');
   const tp = TEMPLATES[aiTpl];
-  const plan = await aiJSON(`You are the senior content editor and video director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". Every video must serve that promise: it takes a real task from a finance professional's work and shows, in plain practical terms, how AI helps with it. Speak as a peer from inside the profession, not as a tech vendor. Plan a short social video in HEBREW.
+  const plan = await aiJSON(`You are the senior content editor and video director of ${brandCtx()}. ${brandIsDefault() ? "Every video must serve that promise: it takes a real task from a finance professional's work and shows, in plain practical terms, how AI helps with it. Speak as a peer from inside the profession, not as a tech vendor." : ''} Plan a short social video in HEBREW.
 
 Topic / brief from the creator:
 ${brief}
 
 Format: ${aiFmt}. Target total length: ${aiLen} seconds. Structure to follow ("${tp[0]}"): ${tp[2]}.
-Rules: the first scene is the hook and lasts at most 3 seconds; one idea only; concrete and practical, no hype; headings up to 6 words; body up to 12 words; narration is what the on-screen captions will say for that scene (1-2 short spoken sentences that fit its seconds at a natural pace, about 2.5 Hebrew words per second); the last scene is a single call to action to join the AI Finance community; no emojis; no long dashes; do not mix English words inside Hebrew sentences (the name AI Finance is allowed). Never invent statistics: use a number only if the creator's brief contains it, otherwise do not use kind "number".
+Rules: the first scene is the hook and lasts at most 3 seconds; one idea only; concrete and practical, no hype; headings up to 6 words; body up to 12 words; narration is what the on-screen captions will say for that scene (1-2 short spoken sentences that fit its seconds at a natural pace, about 2.5 Hebrew words per second); the last scene is a single call to action: ${brandIsDefault() ? 'to join the AI Finance community' : (S.brand.cta || 'one clear next step')}; no emojis; no long dashes; do not mix English words inside Hebrew sentences (the brand name ${S.brand.name} is allowed). Never invent statistics: use a number only if the creator's brief contains it, otherwise do not use kind "number".
 
 Reply with only JSON: {"title": string, "scenes": [{"kind": "hook"|"point"|"number"|"quote"|"cta", "heading": string, "body": string, "number": string, "narration": string, "seconds": number}], "post": string}
 "post" is a LinkedIn post in Hebrew that accompanies the video: sharp first line, 900-1300 characters, short paragraphs, one call to action, then 5 hashtags in English only.`, 'קלוד כותב תסריט ובונה סצנות...');
@@ -253,7 +260,7 @@ function askBrief() {
 const autoProgress = t => modal(`<h3>בונה סרטון שיווקי...</h3><div class="bar"><i id="autoBar" style="width:4%"></i></div><p class="hint busy" id="autoStep">${esc(t)}</p><p class="hint">לא לסגור את המסך. בסוף יופיע סיכום.</p><button type="button" class="btn sm" data-a="autoNoListen" id="autoNoListen">לדלג על ההקשבה</button>`);
 async function planEdit(lines, brief, vis) {
   const d = projDur(), has = lines.length > 0;
-  return AI.json(`You are the senior video editor and marketing director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". A member uploaded a raw video. Dress it as a short marketing video that a finance professional will stop scrolling for. The footage itself stays exactly as it is: you only add an opening title, a few key points, and the closing call to action. Write everything in HEBREW.
+  return AI.json(`You are the senior video editor and marketing director of ${brandCtx()}. A member uploaded a raw video. Dress it as a short marketing video that its audience will stop scrolling for. The footage itself stays exactly as it is: you only add an opening title, a few key points, and the closing call to action. Write everything in HEBREW.
 
 The cut footage is ${d.toFixed(1)} seconds long, format ${S.p.fmt}.
 ${has ? 'Transcript of what is said, with the second on the timeline where each line starts:\n' + lines.map(l => '[' + l.t.toFixed(1) + '] ' + l.text).join('\n') : 'There is no transcript: the speech could not be heard.'}
@@ -267,7 +274,7 @@ Plan these elements:
 - "title": a short project name.
 - "post": a LinkedIn post that accompanies the video: sharp first line, 900 to 1300 characters, short paragraphs, one call to action, then 5 hashtags in English only.
 
-Hard rules: ${has ? 'every text must come from what is actually said in the transcript' : 'you did not hear the video. If you can read captions in the frames, every text must come from what those captions say. Otherwise every text may only frame the topic (a question, a promise, a section name) and must not claim what is said in it'}. Never invent facts, names, numbers or statistics. No emojis, no long dashes, no English words inside Hebrew sentences (the name AI Finance is allowed). Concrete and practical, no hype.
+Hard rules: ${has ? 'every text must come from what is actually said in the transcript' : 'you did not hear the video. If you can read captions in the frames, every text must come from what those captions say. Otherwise every text may only frame the topic (a question, a promise, a section name) and must not claim what is said in it'}. Never invent facts, names, numbers or statistics. No emojis, no long dashes, no English words inside Hebrew sentences (the brand name ${S.brand.name} is allowed). Concrete and practical, no hype.
 ${has || brief ? '' : 'If there are no readable captions and the frames do not clearly show what the video is about (for example only a person talking, with no text), set "understood" to false and leave the rest empty. Do not guess.'}
 Reply with only JSON: {"understood": boolean, "burned": boolean, "title": string, "hook": string, "points": [{"at": number, "text": string}], "cta": string, "post": string}`, vis && vis.sheets.length ? { images: vis.sheets, cache: false } : { cache: false });
 }
@@ -320,7 +327,7 @@ async function autoEdit(mediaIds) {
       let last = -9, np = 0;
       (Array.isArray(plan.points) ? plan.points : []).map(p => ({ at: +p.at, text: String(p.text || '').trim() })).filter(p => p.text && p.at >= 3.6 && p.at < D - 2).sort((a, b) => a.at - b.at).slice(0, 3).forEach(p => {
         if (p.at - last < 6) return; last = p.at; np++;
-        S.p.clips.push(mkText({ brand: 'point', trackId: firstTrack('text').id, start: +p.at.toFixed(2), dur: Math.min(3.2, D - p.at), text: p.text.slice(0, 60), size: 54, weight: 700, bgOn: true, bg: BRAND.blue, shadow: false, y: TOPY(), anim: 'fade' }));
+        S.p.clips.push(mkText({ brand: 'point', trackId: firstTrack('text').id, start: +p.at.toFixed(2), dur: Math.min(3.2, D - p.at), text: p.text.slice(0, 60), size: 54, weight: 700, bgOn: true, bg: S.brand.color !== BRAND.deep ? S.brand.color : BRAND.blue, shadow: false, y: TOPY(), anim: 'fade' }));
       });
       if (np) done.push(np + ' נקודות מפתח בראש המסך, בזמן שהן נאמרות');
       if (String(plan.title || '').trim()) S.p.name = String(plan.title).trim().slice(0, 60);
@@ -328,7 +335,7 @@ async function autoEdit(mediaIds) {
     }
     addOutro(); addBug();
     { const bug = S.p.clips.find(c => c.brand === 'bug'), hk = S.p.clips.find(c => c.brand === 'hook'); if (bug && hk && bug.dur > hk.dur + 1) { bug.start = hk.dur; bug.dur -= hk.dur; bug.tin = 'fade'; } }
-    const cta = plan && String(plan.cta || '').trim().slice(0, 30), cc = S.p.clips.find(c => c.brand === 'cta'); if (cta && cc) cc.text = cta;
+    const cta = plan && String(plan.cta || '').trim().slice(0, 30), cc = S.p.clips.find(c => c.brand === 'cta'); if (cta && cc) { cc.text = cta; cc.autoCta = false; }
     done.push('תג לוגו בפינה'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
     const lastV = S.p.clips.filter(c => c.type === 'video').sort((a, b) => b.start - a.start)[0]; if (lastV) { lastV.tout = 'fade'; lastV.fadeOut = Math.min(0.4, lastV.dur / 2); }
     // what could not be done, said plainly

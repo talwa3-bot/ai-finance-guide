@@ -16,6 +16,9 @@ const TAGLINE = 'מגשרים בין עולם הכספים\nלעולם הבינ�
 
 const FORMATS = { '16:9': [1920, 1080], '9:16': [1080, 1920], '1:1': [1080, 1080], '4:5': [1080, 1350] };
 const BRAND = { blue: '#0B2BA8', deep: '#061A6E', glow: '#7DB0FF', white: '#FFFFFF', gold: '#E9C46A', ink: '#050A26' };
+// The brand kit. The studio ships with AI Finance, and every part of it can be replaced.
+const BRAND0 = { custom: false, name: 'AI Finance', about: '', tagline: TAGLINE, cta: 'הצטרפו לקהילה', color: BRAND.deep };
+const lighten = (hex, k) => { const n = parseInt(String(hex).replace('#', ''), 16); if (isNaN(n)) return hex; const f = v => Math.round(v + (255 - v) * k); return 'rgb(' + f(n >> 16 & 255) + ',' + f(n >> 8 & 255) + ',' + f(n & 255) + ')'; };
 const LOOKS = {
   orig: ['מקור', ''], vivid: ['חי', 'saturate(1.35) contrast(1.08)'], cinema: ['קולנועי', 'contrast(1.15) saturate(0.85) sepia(0.12)'],
   soft: ['רך', 'contrast(0.92) brightness(1.06) saturate(0.95)'], bw: ['שחור-לבן', 'grayscale(1) contrast(1.1)'],
@@ -26,7 +29,7 @@ const PEAK_RATE = 50;
 const ACCEPT = { video: ['video', 'image', 'solid'], text: ['text'], caption: ['caption'], audio: ['audio'] };
 
 /* ===== state ===== */
-const S = { p: null, media: new Map(), sel: null, t: 0, playing: false, pps: 70, exporting: false, safe: false };
+const S = { brand: Object.assign({}, BRAND0), p: null, media: new Map(), sel: null, t: 0, playing: false, pps: 70, exporting: false, safe: false };
 const cv = $('#cv'), ctx = cv.getContext('2d');
 let RS = 1;
 
@@ -162,6 +165,8 @@ const DB = {
       try { const t = DB.h.transaction(store, mode), rq = fn(t.objectStore(store)); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); } catch (e) { rej(e); }
     });
   },
+  putKV(k, v) { return DB.tx('kv', 'readwrite', s => v == null ? s.delete(k) : s.put(v, k)).catch(() => { }); },
+  getKV(k) { return DB.tx('kv', 'readonly', s => s.get(k)).catch(() => null); },
   putMedia(m) { if (m.builtin || m.blob.size > 400e6) return; DB.tx('media', 'readwrite', s => s.put({ id: m.id, name: m.name, kind: m.kind, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.kind === 'image' ? null : m.thumb, peaks: m.peaks || null })).catch(() => { }); },
   delMedia(id) { DB.tx('media', 'readwrite', s => s.delete(id)).catch(() => { }); },
   saveProject() { return DB.tx('kv', 'readwrite', s => s.put(JSON.stringify(S.p), 'project')); },
@@ -294,7 +299,7 @@ function drawSafe(W, H) {
   ctx.save(); ctx.strokeStyle = 'rgba(233,196,106,.9)'; ctx.setLineDash([14, 10]); ctx.lineWidth = 3;
   const v = H > W; ctx.strokeRect(W * 0.06, H * (v ? 0.12 : 0.06), W * (v ? 0.76 : 0.88), H * (v ? 0.66 : 0.88)); ctx.restore();
 }
-function brandGrad(w, h, color) { const g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, Math.max(w, h) * 0.75); g.addColorStop(0, '#1740D8'); g.addColorStop(1, color || BRAND.deep); return g; }
+function brandGrad(w, h, color) { const g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, Math.max(w, h) * 0.75); const c = color || BRAND.deep; g.addColorStop(0, c === BRAND.deep ? '#1740D8' : lighten(c, 0.22)); g.addColorStop(1, c); return g; }
 function drawClip(c, l, W, H) {
   const pr = propsAt(c, l); let alpha = pr.opacity, sc = pr.scale, ox = pr.x * W, oy = pr.y * H;
   const td = Math.min(0.5, c.dur / 2);
@@ -316,7 +321,7 @@ function drawClip(c, l, W, H) {
   }
   ctx.globalAlpha = clamp(alpha, 0, 1);
   // A brand card paints the royal-blue backdrop itself, so a logo with a clear background fills any format.
-  if (c.card) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.fillStyle = brandGrad(W, H, BRAND.deep); ctx.fillRect(-W / 2, -H / 2, W, H); ctx.restore(); }
+  if (c.card) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.fillStyle = brandGrad(W, H, S.brand.color || BRAND.deep); ctx.fillRect(-W / 2, -H / 2, W, H); ctx.restore(); }
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(pr.rot * Math.PI / 180); ctx.scale(base * sc, base * sc);
   const f = lookFilter(c); if (f) ctx.filter = f;
   if (c.type === 'solid') {
