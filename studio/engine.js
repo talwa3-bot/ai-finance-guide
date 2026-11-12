@@ -28,6 +28,14 @@ const KFP = ['x', 'y', 'scale', 'rot', 'opacity'];
 const PEAK_RATE = 50;
 const ACCEPT = { video: ['video', 'image', 'solid'], text: ['text'], caption: ['caption'], audio: ['audio'] };
 
+/* ===== diagnostics =====
+   What this device can do and what happened during the last automatic edit. Shown in the summary so
+   a problem on a phone can be reported in one copy and paste. */
+const DIAG = { errors: [], log: [] };
+window.addEventListener('error', ev => { if (DIAG.errors.length < 8) DIAG.errors.push(String(ev.message || ev.error || 'error').slice(0, 140)); });
+window.addEventListener('unhandledrejection', ev => { if (DIAG.errors.length < 8) DIAG.errors.push('promise: ' + String(ev.reason && (ev.reason.code || ev.reason.message) || ev.reason).slice(0, 140)); });
+const diag = (k, v) => { DIAG.log.push(k + '=' + (typeof v === 'object' ? JSON.stringify(v) : v)); };
+
 /* ===== state ===== */
 const S = { brand: Object.assign({}, BRAND0), p: null, media: new Map(), sel: null, t: 0, playing: false, pps: 70, exporting: false, safe: false };
 const cv = $('#cv'), ctx = cv.getContext('2d');
@@ -222,6 +230,7 @@ function pruneEls() {
 }
 function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; if (e.el.volume !== 1) e.el.volume = 1; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
 function syncMedia() {
+  if (S.priming) return; // footage is being woken up for reading; leave it alone
   assignSlots();
   const t = S.t, act = new Map(), next = new Map();
   for (const c of S.p.clips) {
@@ -247,7 +256,7 @@ function syncMedia() {
     if (el.playbackRate !== c.speed) el.playbackRate = c.speed;
     if (S.playing) {
       if (el.paused) { if (Math.abs(el.currentTime - want) > 0.08) el.currentTime = want; const pr = el.play(); if (pr) pr.catch(() => { }); }
-      else if (!el.seeking && Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
+      else if (!el.seeking && Math.abs(el.currentTime - want) > 0.7) el.currentTime = want;
     } else {
       if (!el.paused) el.pause();
       if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 0.03 && !el.seeking) el.currentTime = want;
@@ -409,8 +418,13 @@ function masterTime() {
     const e = EL.get(elKey(c)); if (!e) continue; const el = e.el;
     if (el.paused || el.seeking || el.readyState < 2) continue;
     const t = c.start + (el.currentTime - c.in) / c.speed;
+    // Some phones report the video's time in coarse steps rather than every frame. Count how often it
+    // actually moves between frames, so the clock can tell a fine-grained time from a stepped one.
+    e.n = (e.n || 0) + 1; if (el.currentTime !== e.ct) { e.chg = (e.chg || 0) + 1; e.ct = el.currentTime; }
+    if (e.n > 240) { e.n /= 2; e.chg /= 2; }
+    masterTime.fine = e.n < 20 || e.chg / e.n > 0.6;
     // follow only when the element is where this clip expects it; otherwise syncMedia is about to move it
-    if (Math.abs(t - S.t) < 0.4) return Math.max(t, c.start);
+    if (Math.abs(t - S.t) < 0.6) return Math.max(t, c.start);
   }
   return null;
 }
@@ -428,7 +442,12 @@ function loop(ts) {
     // smooth on slow devices. With no video on screen the timer runs. While footage is still seeking or
     // buffering, the clock holds, so picture and sound never drift apart.
     const mt = masterTime();
-    if (mt != null) { S.t = mt; stallT = 0; }
+    if (mt != null) {
+      // fine-grained video time: follow it exactly. Stepped video time: run on the timer and only
+      // re-anchor to the video when the two have moved apart, so overlays do not judder with each step.
+      if (masterTime.fine) S.t = mt; else { S.t += Math.min(dt, 0.5); if (Math.abs(mt - S.t) > 0.3) S.t = mt; }
+      stallT = 0;
+    }
     else if (mediaStalled() && stallT < 1.5) stallT += dt;
     else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
     const d = projDur();

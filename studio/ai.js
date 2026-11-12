@@ -104,6 +104,21 @@ Reply with only a JSON array of {"id": string, "text": string} for the items you
 }
 
 /* ----- critique ----- */
+// A phone does not decode a video until it has played. Before reading frames, let each one play
+// muted for a moment and stop, so seeking then shows real pictures instead of black.
+async function primeMedia() {
+  for (const c of S.p.clips) { if (c.type !== 'video') continue; getEl(c); }
+  const els = [...EL.values()].map(e => e.el).filter(el => el.tagName === 'VIDEO'); let primed = 0;
+  S.priming = true;
+  for (const el of els) {
+    if (el.readyState >= 3 && el.played && el.played.length) continue;
+    const was = el.muted; el.muted = true;
+    try { await Promise.race([el.play().then(() => new Promise(r => { const d = () => r(); el.addEventListener('timeupdate', d, { once: true }); setTimeout(d, 1200); })), new Promise(r => setTimeout(r, 3000))]); primed++; } catch (e) { }
+    try { el.pause(); } catch (e) { } el.muted = was;
+  }
+  S.priming = false; requestDraw();
+  diag('primed', primed + '/' + els.length); diag('ready', els.map(el => el.readyState).join(','));
+}
 function waitMedia() {
   return new Promise(res => {
     const t0 = performance.now();
@@ -272,11 +287,18 @@ async function sheetsAt(times, lim, onProg, first, big) {
   for (let i = 0; i < times.length; i++) {
     if (i % per === 0) { await flush(); sc = document.createElement('canvas'); sc.width = cols * cw; sc.height = rows * ch; x = sc.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, sc.width, sc.height); }
     S.t = times[i]; syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false;
+    // a frame that came out black was not decoded in time: give it one more moment, then count it
+    if (isBlack()) { await new Promise(r => setTimeout(r, 350)); syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false; if (isBlack()) sheetsAt.black++; }
+    sheetsAt.total++;
     const k = i % per, px = (k % cols) * cw, py = Math.floor(k / cols) * ch; x.drawImage(cv, px, py, cw, ch);
     x.fillStyle = '#000'; x.fillRect(px, py, 46, 26); x.fillStyle = '#FFD23F'; x.font = '700 18px sans-serif'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillText(String((first || 0) + i + 1), px + 23, py + 14);
     if (onProg) onProg((i + 1) / times.length);
   }
   await flush(); S.sel = sel; seek(was); return { sheets, times, per };
+}
+sheetsAt.black = 0; sheetsAt.total = 0;
+function isBlack() {
+  try { const w = cv.width, h = cv.height, d = ctx.getImageData(Math.floor(w * 0.2), Math.floor(h * 0.3), Math.floor(w * 0.6), 4).data; let s = 0; for (let i = 0; i < d.length; i += 16) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 16) < 6; } catch (e) { return false; }
 }
 const spread = (D, n) => { const t = []; for (let i = 0; i < n; i++) t.push(+(D * (i + 0.5) / n).toFixed(1)); return t; };
 const imgLimits = async () => { try { const l = await AI.limits(); return l && l.images && l.images.maxCount ? { maxCount: Math.min(4, l.images.maxCount), maxBytes: l.images.maxBytes } : null; } catch (e) { return null; } };
@@ -369,10 +391,13 @@ async function autoEdit(mediaIds) {
     // a new upload replaces the old footage: files no longer on the timeline are released, so storage does not fill up
     if (mediaIds) [...S.media.values()].filter(m => !m.builtin && m.kind !== 'image' && !ids.includes(m.id)).forEach(m => { S.media.delete(m.id); DB.delMedia(m.id); try { URL.revokeObjectURL(m.url); } catch (e) { } });
     autoProgress('בודק אם בסרטון כבר יש כתוביות'); { const sk = $('#autoNoListen'); if (sk) sk.hidden = true; }
-    const lim = AI ? await imgLimits() : null;
+    DIAG.log = []; DIAG.errors = []; sheetsAt.black = 0; sheetsAt.total = 0; const T0 = performance.now();
+    diag('files', vids.map(m => Math.round(m.blob.size / 1e6) + 'MB/' + Math.round(m.duration) + 's/' + m.w + 'x' + m.h).join(' '));
+    await primeMedia();
+    const lim = AI ? await imgLimits() : null; diag('claude', AI ? (lim ? 'images:' + lim.maxCount : 'no-images') : 'off');
     // 1. captions that are already in the footage are read, never added again
     let burned = false, lines = [];
-    if (AI && lim) { const r = await readBurned(lim, u => { autoBar(4 + 36 * u); if (u > 0.2) autoStep('קורא את הכתוביות שבסרטון'); }); burned = r.burned; lines = r.lines; }
+    if (AI && lim) { const r = await readBurned(lim, u => { autoBar(4 + 36 * u); if (u > 0.2) autoStep('קורא את הכתוביות שבסרטון'); }); burned = r.burned; lines = r.lines; diag('read', { burned, lines: lines.length }); }
     // 2. otherwise listen, where this browser can, and add captions from the speech
     let caps = 0;
     if (!burned) {
@@ -380,7 +405,7 @@ async function autoEdit(mediaIds) {
       const heard = new Map(); let n = 0;
       for (const m of vids) { const segs = await transcribe(m, u => autoBar(40 + 15 * (n + u) / vids.length)); if (segs) heard.set(m.id, segs); n++; }
       if (!$('#autoBar')) autoProgress('קלוד מתכנן את העריכה');
-      heard.forEach((segs, id) => { caps += addCaptions(id, segs); });
+      heard.forEach((segs, id) => { caps += addCaptions(id, segs); }); diag('heard', caps);
       if (caps) { S.p.cap.style = 'karaoke'; S.p.cap.size = S.p.fmt === '16:9' ? 54 : 62; done.push('כתוביות לפי הדיבור (' + caps + ')'); }
       lines = []; heard.forEach((segs, id) => segs.forEach(sg => { const t = srcToTl(id, sg.a); lines.push({ t: t == null ? (srcToTl(id, sg.b - 0.05) || 0) : t, text: sg.text }); })); lines.sort((a, b) => a.t - b.t);
     } else done.push('קראתי את הכתוביות שכבר נמצאות בסרטון (' + lines.length + ' שורות), ולא הוספתי כתוביות נוספות');
@@ -399,7 +424,7 @@ async function autoEdit(mediaIds) {
         }
       } catch (e) { if (e && e.code === 'not_granted') AI = null; plan = null; }
     }
-    autoBar(80); autoStep('מרכיב את הסרטון');
+    diag('plan', plan ? { hook: !!plan.hook, points: (plan.points || []).length } : 'none'); autoBar(80); autoStep('מרכיב את הסרטון');
     // 4. build: titles go in the top band; the footage is left exactly as uploaded
     if (plan) {
       const D = projDur(), tall = S.p.h > S.p.w, hook = String(plan.hook || '').trim().slice(0, 80);
@@ -435,11 +460,16 @@ async function autoEdit(mediaIds) {
     if (!plan) skipped.push(AI ? (brief || lines.length ? 'תכנון העריכה לא הצליח הפעם. אפשר להריץ שוב' : 'כותרת ונקודות מפתח: לא נוספו, כי הנושא לא ידוע ולא רציתי לנחש') : 'כותרת ונקודות מפתח: נכתבות רק כשהעורך פתוח בתוך קלוד');
     else if (!lines.length) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור. כדאי לעבור עליהם');
     autoBar(100); S.sel = null; commit(); seek(0); renderPanel();
+    diag('frames', sheetsAt.total + ' read, ' + sheetsAt.black + ' black'); diag('look', look ? look.checked + ' checked, ' + look.removed.length + ' removed' : 'not run');
+    diag('export', (pickMime() || 'none') + (cv.captureStream ? '' : ' no-capture')); diag('secs', Math.round((performance.now() - T0) / 1000));
+    if (sheetsAt.total && sheetsAt.black > sheetsAt.total * 0.3) skipped.push('חלק גדול מהתמונות שנשלחו לקלוד יצאו שחורות במכשיר הזה (' + sheetsAt.black + ' מתוך ' + sheetsAt.total + '), ולכן ייתכן שהוא לא ראה את הכתוביות');
+    const rep = 'AI Finance Studio v15\n' + navigator.userAgent.replace(/Mozilla\/5\.0 /, '').slice(0, 120) + '\n' + DIAG.log.join('\n') + (DIAG.errors.length ? '\nerrors: ' + DIAG.errors.join(' | ') : '\nerrors: none');
     const sec = (t, a, cls) => a.length ? `<h4>${t}</h4><div class="col">${a.map(x => `<div class="crit"><p${cls ? ' class="fx"' : ''}>${esc(x)}</p></div>`).join('')}</div>` : '';
     modal(`<h3>הסרטון מוכן</h3><p class="hint">${esc(S.p.name)} · אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
+    <div class="rowf" style="margin:10px 0 4px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>
     ${sec('מה נעשה', done)}${sec('נבדק לפני סיום', checks)}${sec('תוקן בבדיקה', fixes, 1)}${sec('מה לא נעשה', skipped, 1)}
-    <div class="rowf" style="margin-top:12px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>`);
-  } catch (e) { closeModal(); commit(); toast('העריכה האוטומטית נעצרה באמצע. אפשר לחזור אחורה עם בטל.'); }
+    <details style="margin-top:12px"><summary class="hint" style="cursor:pointer">דוח טכני, למקרה שמשהו לא עבד</summary><pre id="autoRep" class="aiout" style="direction:ltr;text-align:left;font-size:11px;margin-top:6px">${esc(rep)}</pre><button type="button" class="btn sm" data-a="autoCopyRep" style="margin-top:6px">העתקת הדוח</button></details>`);
+  } catch (e) { DIAG.errors.push('autoEdit: ' + String(e && e.message || e).slice(0, 140)); closeModal(); commit(); toast('העריכה האוטומטית נעצרה באמצע: ' + String(e && e.message || '').slice(0, 60)); }
   autoBusy = false;
 }
 
@@ -496,6 +526,7 @@ $('#panel').addEventListener('change', e => {
 });
 Object.assign(ACT, {
   autoEdit() { autoEdit(); },
+  autoCopyRep() { const t = ($('#autoRep') || {}).textContent || ''; try { navigator.clipboard.writeText(t).then(() => toast('הדוח הועתק'), () => toast('אפשר לסמן את הטקסט ולהעתיק ידנית')); } catch (e) { toast('אפשר לסמן את הטקסט ולהעתיק ידנית'); } },
   autoNoListen() { if (transcribe.cancel) transcribe.cancel(); },
   autoPlay() { closeModal(); seek(0); play(); },
   aiSec(v) { aiSec = v; renderPanel(); },

@@ -380,7 +380,7 @@ const safeName = () => (S.p.name || 'video').replace(/[\\/:*?"<>|]+/g, ' ').trim
 /* ===== modal + export ===== */
 function modal(html) { $('#mbox').innerHTML = html; $('#modal').hidden = false; }
 function closeModal() { const v = $('#mbox video'); if (v) { v.pause(); URL.revokeObjectURL(v.src); } $('#modal').hidden = true; $('#mbox').innerHTML = ''; }
-let expQ = '1080';
+let expQ = matchMedia('(max-width: 860px)').matches ? '720' : '1080';
 function openExport() {
   pause(); const mime = pickMime(), d = projDur();
   modal(`<h3>ייצוא הסרטון</h3><p class="hint">אורך ${fmtT(d)} · ${S.p.fmt} · קובץ ${mime.includes('mp4') ? 'MP4' : mime ? 'WebM' : 'לא נתמך'}</p>
@@ -669,7 +669,11 @@ async function boot() {
     await DB.open(); const { pj, rows } = await DB.load();
     try { const bj = await DB.getKV('brand'); if (bj) S.brand = Object.assign({}, BRAND0, JSON.parse(bj), { custom: false }); const lb = await DB.getKV('brandLogo'); if (lb) await applyCustomLogo(lb); } catch (e) { }
     for (const r of rows) { try { const m = await buildMedia(r); S.media.set(m.id, m); } catch (e) { } }
-    if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) { S.p = normalizeProject(pj); restored = true; }
+    if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) {
+      const p = normalizeProject(pj);
+      // a saved timeline whose footage did not survive (a large file the device would not keep) is no use: start clean
+      if (!p.clips.some(c => c.mediaId && !S.media.has(c.mediaId))) { S.p = p; restored = true; }
+    }
   } catch (e) { }
   setCanvas(); H.stack = [snap()]; H.i = 0; refresh(); renderPanel(); uiPlay(); seek(restored ? 0 : 1.2);
   if (document.fonts) { document.fonts.ready.then(() => requestDraw()); ['800 40px Rubik', '500 40px Rubik', '400 40px "Secular One"', '700 40px Heebo'].forEach(f => document.fonts.load(f).then(requestDraw, () => { })); }
