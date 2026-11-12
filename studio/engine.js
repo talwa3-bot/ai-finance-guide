@@ -401,8 +401,19 @@ function drawCaption(c, l, W, H) {
 
 /* ===== clock ===== */
 let lastTs = 0, dirty = true, stallT = 0;
+function masterTime() {
+  for (const c of S.p.clips) {
+    if (c.type !== 'video') continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue;
+    const e = EL.get(elKey(c)); if (!e) continue; const el = e.el;
+    if (el.paused || el.seeking || el.readyState < 2) continue;
+    const t = c.start + (el.currentTime - c.in) / c.speed;
+    // follow only when the element is where this clip expects it; otherwise syncMedia is about to move it
+    if (Math.abs(t - S.t) < 0.4) return Math.max(t, c.start);
+  }
+  return null;
+}
 function mediaStalled() {
-  for (const c of S.p.clips) { if (!isTimed(c)) continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = EL.get(elKey(c)); if (e && (e.el.seeking || e.el.readyState < 2)) return true; }
+  for (const c of S.p.clips) { if (!isTimed(c)) continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = EL.get(elKey(c)); if (e && (e.el.seeking || e.el.readyState < 2 || (c.type === 'video' && e.el.paused))) return true; }
   return false;
 }
 function requestDraw() { dirty = true; }
@@ -410,8 +421,14 @@ function loop(ts) {
   requestAnimationFrame(loop);
   if (S.playing) {
     const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts;
-    // hold the clock while footage on screen is still seeking, so picture and sound never drift apart
-    if (mediaStalled() && stallT < 1.5) stallT += dt; else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
+    // The footage on screen is the clock. While a video is playing, the timeline follows the video's own
+    // time instead of racing it with a timer, so nothing has to be nudged back into sync and playback stays
+    // smooth on slow devices. With no video on screen the timer runs. While footage is still seeking or
+    // buffering, the clock holds, so picture and sound never drift apart.
+    const mt = masterTime();
+    if (mt != null) { S.t = mt; stallT = 0; }
+    else if (mediaStalled() && stallT < 1.5) stallT += dt;
+    else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
     const d = projDur();
     if (S.t >= d) { S.t = Math.max(0, d - 0.001); pause(); if (S.exporting) finishExport(); }
     syncMedia(); draw(); uiTime();

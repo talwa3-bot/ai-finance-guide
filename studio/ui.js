@@ -235,7 +235,7 @@ const PANELS = {
     const items = [...S.media.values()].map(m => `<div class="mi"><div class="th" style="${m.thumb ? `background-image:url('${m.thumb}')` : ''}">${m.thumb ? '' : 'שמע'}</div>
       <div class="nm"><b>${esc(m.name)}</b><small>${m.kind === 'image' ? 'תמונה' : fmtT(m.duration)}${m.w ? ' · ' + m.w + '×' + m.h : ''}</small></div>
       <button type="button" class="btn sm" data-a="addMedia" data-v="${m.id}">הוספה</button>${m.builtin ? '' : `<button type="button" class="x" data-a="delMedia" data-v="${m.id}" aria-label="מחיקה">✕</button>`}</div>`).join('');
-    return `<label class="drop" for="fileIn"><b>העלאת סרטון</b><span class="hint">מעלים סרטון, והעורך מלביש עליו סרטון שיווקי לבד: כותרת פתיחה, נקודות מפתח, לוגו וסיומת. הצילום עצמו לא נחתך. הקובץ נשאר במכשיר. כדי להבין את התוכן, הקול עובר לזיהוי הדיבור של הדפדפן ותמונות עצירה נשלחות לקלוד.</span></label><button type="button" class="btn wide gold" data-a="autoEdit" style="margin-top:8px"${S.p.clips.some(c => c.type === 'video') ? '' : ' disabled'}>עריכה אוטומטית מחדש</button><div class="col" style="margin-top:10px">${items}</div>`;
+    return `<label class="drop" for="fileIn" data-a="autoUp"><b>העלאת סרטון</b><span class="hint">מעלים סרטון, והעורך מלביש עליו סרטון שיווקי לבד: כותרת פתיחה, נקודות מפתח, לוגו וסיומת. הצילום עצמו לא נחתך. הקובץ נשאר במכשיר. כדי להבין את התוכן, הקול עובר לזיהוי הדיבור של הדפדפן ותמונות עצירה נשלחות לקלוד.</span></label><label class="btn sm wide" for="fileIn" data-a="addOnly" style="display:block;text-align:center;cursor:pointer;margin-top:8px">הוספת קובץ לסרטון הנוכחי, בלי עריכה</label><button type="button" class="btn wide gold" data-a="autoEdit" style="margin-top:8px"${S.p.clips.some(c => c.type === 'video') ? '' : ' disabled'}>עריכה אוטומטית מחדש</button><div class="col" style="margin-top:10px">${items}</div>`;
   },
   text() {
     return `<h4>הוספת טקסט בסמן</h4><div class="col">${Object.entries(TEXT_PRESETS).map(([k, v]) => `<button type="button" class="btn" data-a="addPreset" data-v="${k}">${v[0]}</button>`).join('')}</div>
@@ -446,6 +446,8 @@ const ACT = {
   back() { pause(); seek(S.t - 1 / S.p.fps); }, fwd() { pause(); seek(S.t + 1 / S.p.fps); },
   undo() { restore(-1); }, redo() { restore(1); },
   upload() { $('#fileIn').click(); },
+  addOnly() { addOnly = true; },
+  autoUp() { addOnly = false; },
   addMedia(v) { const m = S.media.get(v); if (m) addMedia(m); },
   delMedia(v) { const m = S.media.get(v); if (!m) return; S.p.clips = S.p.clips.filter(c => c.mediaId !== v); S.media.delete(v); DB.delMedia(v); try { URL.revokeObjectURL(m.url); } catch (e) { } commit(); renderPanel(); },
   split() {
@@ -561,14 +563,13 @@ cv.addEventListener('wheel', e => {
 }, { passive: false });
 
 /* ===== files ===== */
+// The main upload always starts a fresh automatic edit of what was uploaded, replacing whatever is on the
+// timeline (undo brings it back). "Add to this video" only adds the file to the current timeline.
+let addOnly = false;
 async function handleFiles(files) {
-  // A first video upload starts the automatic edit: nothing of the user's is on the timeline yet.
-  const fresh = !S.p.clips.some(c => c.mediaId && !(S.media.get(c.mediaId) || {}).builtin), got = [];
+  const add = addOnly; addOnly = false; const got = [];
   for (const f of files) { try { toast('טוען את ' + f.name + '...'); got.push(await importFile(f)); } catch (e) { toast(e.message === 'load' ? 'לא הצלחתי לקרוא את ' + f.name : e.message); } }
-  const vids = got.filter(m => m.kind === 'video');
-  if (fresh && vids.length && typeof autoEdit === 'function') {
-    return autoEdit(got.filter(m => m.kind !== 'image').map(m => m.id));
-  }
+  if (!add && got.some(m => m.kind === 'video') && typeof autoEdit === 'function') return autoEdit(got.filter(m => m.kind !== 'image').map(m => m.id));
   if (got.length === 1) addMedia(got[0]); else if (got.length) toast(got.length + ' קבצים נוספו לספרייה');
   setTab(isMobile() && got.length === 1 ? 'edit' : 'media');
 }
