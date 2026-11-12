@@ -10,6 +10,9 @@ const easeOut = u => 1 - Math.pow(1 - clamp(u, 0, 1), 3);
 const easeInOut = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 const easeBack = u => { u = clamp(u, 0, 1); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
 const clone = o => JSON.parse(JSON.stringify(o));
+// The community name never breaks across lines.
+const nb = s => String(s == null ? '' : s).replace(/AI Finance/g, 'AI\u00A0Finance');
+const TAGLINE = 'מגשרים בין עולם הכספים\nלעולם הבינה המלאכותית';
 
 const FORMATS = { '16:9': [1920, 1080], '9:16': [1080, 1920], '1:1': [1080, 1080], '4:5': [1080, 1350] };
 const BRAND = { blue: '#0B2BA8', deep: '#061A6E', glow: '#7DB0FF', white: '#FFFFFF', gold: '#E9C46A', ink: '#050A26' };
@@ -250,8 +253,8 @@ function lookFilter(c) {
 function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
 function wrapLines(text, maxW) {
   const out = [];
-  for (const para of String(text).split('\n')) {
-    const words = para.split(/\s+/).filter(Boolean); let cur = '';
+  for (const para of nb(text).split('\n')) {
+    const words = para.split(/[ \t]+/).filter(Boolean); let cur = '';
     for (const w of words) { const tryL = cur ? cur + ' ' + w : w; if (cur && ctx.measureText(tryL).width > maxW) { out.push(cur); cur = w; } else cur = tryL; }
     out.push(cur);
   }
@@ -261,10 +264,12 @@ function draw() {
   const p = S.p, W = p.w, H = p.h, t = S.t;
   ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.shadowColor = 'transparent';
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  // the corner logo steps aside while a full brand card is on screen
+  const cardOn = p.clips.some(c => c.brand === 'card' && t >= c.start && t < c.start + c.dur);
   for (let i = p.tracks.length - 1; i >= 0; i--) {
     const tr = p.tracks[i]; if (tr.type === 'audio' || tr.hidden) continue;
     for (const c of p.clips) {
-      if (c.trackId !== tr.id) continue; const l = t - c.start; if (l < 0 || l >= c.dur) continue;
+      if (c.trackId !== tr.id || (cardOn && c.brand === 'bug')) continue; const l = t - c.start; if (l < 0 || l >= c.dur) continue;
       ctx.save(); try { drawClip(c, l, W, H); } catch (e) { } ctx.restore();
     }
   }
@@ -274,6 +279,7 @@ function drawSafe(W, H) {
   ctx.save(); ctx.strokeStyle = 'rgba(233,196,106,.9)'; ctx.setLineDash([14, 10]); ctx.lineWidth = 3;
   const v = H > W; ctx.strokeRect(W * 0.06, H * (v ? 0.12 : 0.06), W * (v ? 0.76 : 0.88), H * (v ? 0.66 : 0.88)); ctx.restore();
 }
+function brandGrad(w, h, color) { const g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, Math.max(w, h) * 0.75); g.addColorStop(0, '#1740D8'); g.addColorStop(1, color || BRAND.deep); return g; }
 function drawClip(c, l, W, H) {
   const pr = propsAt(c, l); let alpha = pr.opacity, sc = pr.scale, ox = pr.x * W, oy = pr.y * H;
   const td = Math.min(0.5, c.dur / 2);
@@ -285,7 +291,7 @@ function drawClip(c, l, W, H) {
   let src = null, sw = W, sh = H;
   if (c.type !== 'solid') {
     const m = S.media.get(c.mediaId); if (!m) return;
-    if (m.kind === 'image') { src = m.img; sw = m.w; sh = m.h; if (!src || !src.complete || !sw) return; }
+    if (m.kind === 'image') { src = m.img; sw = m.w; sh = m.h; if (!src || src.complete === false || !sw) return; }
     else { const e = getEl(c); if (!e) return; src = e.el; sw = src.videoWidth; sh = src.videoHeight; if (src.readyState < 2 || !sw) return; }
   }
   const cover = Math.max(W / sw, H / sh), contain = Math.min(W / sw, H / sh), base = c.fit === 'contain' ? contain : cover;
@@ -294,10 +300,12 @@ function drawClip(c, l, W, H) {
     ctx.translate(W / 2, H / 2); ctx.scale(cover * 1.12, cover * 1.12); ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh); ctx.restore();
   }
   ctx.globalAlpha = clamp(alpha, 0, 1);
+  // A brand card paints the royal-blue backdrop itself, so a logo with a clear background fills any format.
+  if (c.card) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.fillStyle = brandGrad(W, H, BRAND.deep); ctx.fillRect(-W / 2, -H / 2, W, H); ctx.restore(); }
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(pr.rot * Math.PI / 180); ctx.scale(base * sc, base * sc);
   const f = lookFilter(c); if (f) ctx.filter = f;
   if (c.type === 'solid') {
-    if (c.grad) { const g = ctx.createRadialGradient(0, -sh * 0.1, 0, 0, 0, Math.max(sw, sh) * 0.75); g.addColorStop(0, '#1740D8'); g.addColorStop(1, c.color); ctx.fillStyle = g; }
+    if (c.grad) ctx.fillStyle = brandGrad(sw, sh, c.color);
     else ctx.fillStyle = c.color;
     ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
   } else ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh);
@@ -340,7 +348,7 @@ function drawText(c, l, W, H, f) {
 function bidiOrder(ws) { const out = []; let run = []; for (const w of ws) { if (!isHeb(w.w) && /[A-Za-z0-9]/.test(w.w)) run.unshift(w); else { out.push(...run); run = []; out.push(w); } } out.push(...run); return out; }
 function drawCaption(c, l, W, H) {
   const cs = S.p.cap, ref = Math.min(W, H) / 1080, size = cs.size * ref;
-  const words = String(c.text || '').trim().split(/\s+/).filter(Boolean); if (!words.length) return;
+  const words = nb(c.text).trim().split(/[ \t\n]+/).filter(Boolean); if (!words.length) return;
   const n = words.length, prog = clamp(l / c.dur, 0, 0.9999), ai = Math.floor(prog * n), rtl = isHeb(c.text);
   const cy = cs.pos === 'top' ? H * 0.15 : cs.pos === 'mid' ? H * 0.5 : H * (H > W ? 0.74 : 0.85);
   ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';

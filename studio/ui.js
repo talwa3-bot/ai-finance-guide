@@ -293,11 +293,21 @@ function addMedia(m) {
     const f = m.h > m.w * 1.2 ? '9:16' : m.w > m.h * 1.2 ? '16:9' : null;
     if (f && f !== S.p.fmt) { setFmt(f, true); toast('הפורמט הותאם לסרטון: ' + f); }
   }
-  const c = addClip(mkClip({ type: m.kind, mediaId: m.id, trackId: tr.id, dur: m.kind === 'image' ? 4 : m.duration }), 'end');
+  const cut = m.id === 'logoMark' || m.id === 'logoFull';
+  const c = addClip(mkClip(Object.assign({ type: m.kind, mediaId: m.id, trackId: tr.id, dur: m.kind === 'image' ? 4 : m.duration }, cut ? { fit: 'contain', scale: 0.8 } : {})), 'end');
   commit(); seek(c.start); if (isMobile()) setTab('edit');
 }
 function addText(o) { const tr = firstTrack('text'); const c = addClip(mkText(Object.assign({ trackId: tr.id }, o)), S.t); commit(); return c; }
-function setFmt(f, silent) { S.p.fmt = f; S.p.w = FORMATS[f][0]; S.p.h = FORMATS[f][1]; setCanvas(); if (!silent) commit(); }
+function setFmt(f, silent) {
+  S.p.fmt = f; S.p.w = FORMATS[f][0]; S.p.h = FORMATS[f][1];
+  // brand cards and the corner tag are laid out per format, so they follow a format change
+  S.p.clips.forEach(c => {
+    if (c.brand === 'card') { const n = brandCard({ dur: c.dur }); ['mediaId', 'fit', 'card', 'scale', 'x', 'y', 'kf'].forEach(k => c[k] = n[k]); }
+    else if (c.brand === 'bug') { const n = logoBug(c.trackId, c.dur); ['scale', 'x', 'y'].forEach(k => c[k] = n[k]); c.kf = []; }
+    else if (c.brand === 'tag') { const n = taglineClip({}); c.size = n.size; c.y = n.y; c.kf = []; }
+  });
+  setCanvas(); if (!silent) commit();
+}
 function demoProject() {
   const p = newProject(); S.p = p;
   p.name = 'סרטון פתיחה AI Finance';
@@ -314,8 +324,7 @@ function spreadCaptions() {
   const txt = ($('#capScript').value || '').trim(); if (!txt) return toast('קודם מדביקים טקסט בתיבה');
   const n = clamp(+$('#capWords').value || 4, 1, 10), sel = selClip(); let a = 0, b = projDur();
   if (sel && (sel.type === 'video' || sel.type === 'audio')) { a = sel.start; b = sel.start + sel.dur; }
-  const chunks = [];
-  txt.replace(/([.!?…])\s+/g, '$1\n').split(/\n+/).forEach(s => { const w = s.trim().split(/\s+/).filter(Boolean); for (let i = 0; i < w.length; i += n) chunks.push(w.slice(i, i + n).join(' ')); });
+  const chunks = chunkText(txt, n);
   if (!chunks.length) return;
   const tid = capTrack().id, total = chunks.reduce((s, c) => s + c.length + 2, 0);
   S.p.clips = S.p.clips.filter(c => !(c.type === 'caption' && c.start < b && c.start + c.dur > a));
@@ -454,21 +463,24 @@ const ACT = {
   cue(v) { const c = S.p.clips.find(x => x.id === v); if (c) { seek(c.start + 0.01); S.sel = v; renderTimeline(); renderInspector(); renderPanel(); } },
   brIntro() {
     const tid = firstTrack('video', true).id, d = 3; S.p.clips.forEach(c => { c.start += d; });
-    const b = { x: 0, y: 0, rot: 0, opacity: 1 };
-    S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tid, start: 0, dur: d, kf: [Object.assign({ t: 0, scale: 1 }, b), Object.assign({ t: d, scale: 1.1 }, b)], tin: 'fade', tout: 'fade' }));
-    commit(); seek(0); toast('נוסף פתיח של 3 שניות. שאר הקליפים זזו קדימה.');
+    S.p.clips.push(brandCard({ trackId: tid, start: 0, dur: d, tin: 'fade', tout: 'fade' }));
+    S.p.clips.push(taglineClip({ trackId: firstTrack('text').id, start: 0.5, dur: d - 0.5 }));
+    commit(); seek(1.5); toast('נוסף פתיח של 3 שניות עם הלוגו והסלוגן. שאר הקליפים זזו קדימה.');
   },
   brOutro() {
-    const tid = firstTrack('video', true).id, at = Math.max(trackEnd(tid), S.p.clips.length ? projDur() : 0), d = 4;
-    S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tid, start: at, dur: d, tin: 'fade', look: 'orig' }));
-    S.p.clips.push(mkText({ trackId: firstTrack('text').id, start: at + 0.5, dur: d - 0.5, text: 'הצטרפו לקהילה', size: 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: 0.34, shadow: false, anim: 'slide' }));
-    commit(); seek(at + 1);
+    const tid = firstTrack('video', true).id, at = Math.max(trackEnd(tid), S.p.clips.length ? projDur() : 0), d = 4, tx = firstTrack('text').id;
+    S.p.clips.push(brandCard({ trackId: tid, start: at, dur: d, tin: 'fade' }));
+    S.p.clips.push(taglineClip({ trackId: tx, start: at + 0.4, dur: d - 0.4 }));
+    let t2 = S.p.tracks.find(t => t.type === 'text' && t.id !== tx);
+    if (!t2) { t2 = { id: uid(), type: 'text', name: 'טקסט 2' }; S.p.tracks.splice(S.p.tracks.findIndex(t => t.id === tx), 0, t2); }
+    S.p.clips.push(mkText({ trackId: t2.id, start: at + 0.8, dur: d - 0.8, text: 'הצטרפו לקהילה', size: isWide() ? 50 : 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: isWide() ? 0.41 : S.p.fmt === '1:1' ? 0.34 : 0.3, shadow: false, anim: 'slide' }));
+    commit(); seek(at + 2);
   },
   brBug() {
     let tr = S.p.tracks.find(t => t.type === 'video' && t.name === 'לוגו');
     if (!tr) { tr = { id: uid(), type: 'video', name: 'לוגו' }; const i = S.p.tracks.findIndex(t => t.type === 'video'); S.p.tracks.splice(i < 0 ? 0 : i, 0, tr); }
     S.p.clips = S.p.clips.filter(c => c.trackId !== tr.id);
-    const v = S.p.h > S.p.w; S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tr.id, start: 0, dur: projDur(), fit: 'contain', scale: v ? 0.3 : 0.18, x: v ? 0.3 : 0.38, y: v ? -0.42 : -0.36, opacity: 0.92 }));
+    S.p.clips.push(logoBug(tr.id, projDur()));
     commit(); toast('תג הלוגו נוסף בפינה. אפשר לגרור אותו על המסך.');
   },
   brCard() { const c = addClip(mkClip({ type: 'solid', trackId: firstTrack('video', true).id, dur: 4, color: BRAND.deep, grad: true }), 'end'); commit(); seek(c.start); },
@@ -549,11 +561,60 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', () => { if (!S.exporting) { const rs = isMobile() ? 0.5 : 1; if (rs !== RS) setCanvas(); else fitCanvas(); renderTimeline(); } });
 
+/* ===== logo cut-outs =====
+   The supplied logo is a photo on a blue backdrop. For a corner tag and for tall formats we lift the
+   wordmark off that backdrop (brightness becomes transparency), so it sits cleanly on any scene. */
+function logoCut(img, y0, y1) {
+  const k = img.naturalWidth / 1600, sx = Math.round(120 * k), sy = Math.round(y0 * k), w = Math.round(1400 * k), h = Math.round((y1 - y0) * k);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+  x.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), a = d.data, fe = Math.round(26 * k);
+  for (let i = 0, p = 0; i < a.length; i += 4, p++) {
+    const lum = 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]; let u = clamp((lum - 78) / 92, 0, 1); u = u * u * (3 - 2 * u);
+    const px = p % w, py = (p / w) | 0, edge = Math.min(px, py, w - 1 - px, h - 1 - py); if (edge < fe) u *= edge / fe;
+    a[i + 3] = Math.round(255 * u);
+  }
+  x.putImageData(d, 0, 0); return c;
+}
+function buildLogoCuts(img) {
+  try {
+    [['logoMark', 'לוגו שקוף', 385, 712], ['logoFull', 'לוגו שקוף עם סלוגן', 385, 792]].forEach(([id, name, y0, y1]) => {
+      const c = logoCut(img, y0, y1);
+      S.media.set(id, { id, name, kind: 'image', builtin: true, img: c, url: '', thumb: c.toDataURL('image/png'), w: c.width, h: c.height, duration: 4, blob: { size: 0 } });
+    });
+  } catch (e) { }
+}
+// One branded card for openers and closers. Wide formats use the full logo artwork; tall and square
+// formats use the clear wordmark on the brand backdrop, because the artwork would be cropped there.
+const isWide = () => S.p.w / S.p.h >= 1.5;
+function brandCard(o) {
+  const b = { x: 0, y: 0, rot: 0, opacity: 1 }, d = o.dur, kf = [Object.assign({ t: 0, scale: 1 }, b), Object.assign({ t: +d.toFixed(3), scale: 1.06 }, b)];
+  if (isWide()) return mkClip(Object.assign({ type: 'image', mediaId: 'logo', brand: 'card', fit: 'cover', card: false, kf }, o));
+  const s = S.p.w === S.p.h ? 0.84 : 0.9, y = -0.07;
+  return mkClip(Object.assign({ type: 'image', mediaId: 'logoFull', brand: 'card', fit: 'contain', card: true, scale: s, y, kf: kf.map(k => Object.assign(k, { y, scale: k.scale * s })) }, o));
+}
+const taglineClip = o => mkText(Object.assign({ brand: 'tag', text: TAGLINE, size: isWide() ? 40 : 54, weight: 500, color: '#FFFFFF', y: isWide() ? 0.25 : S.p.fmt === '1:1' ? 0.17 : S.p.fmt === '4:5' ? 0.14 : 0.1, anim: 'fade', shadow: true }, o));
+function logoBug(trackId, dur) {
+  const v = S.p.h > S.p.w, sq = S.p.h === S.p.w;
+  return mkClip({ type: 'image', mediaId: 'logoMark', brand: 'bug', trackId, start: 0, dur, fit: 'contain', scale: v ? 0.34 : sq ? 0.3 : 0.2, x: v ? 0.29 : sq ? 0.31 : 0.375, y: S.p.fmt === '9:16' ? -0.4 : v ? -0.43 : sq ? -0.42 : -0.4, opacity: 0.95 });
+}
+// Split a script into caption cues: never across a sentence end, and never a lone trailing word.
+function chunkText(s, n) {
+  const out = [];
+  String(s || '').replace(/([.!?…])\s+/g, '$1\n').split(/\n+/).forEach(sen => {
+    const w = nb(sen).trim().split(/[ \t]+/).filter(Boolean), parts = [];
+    for (let i = 0; i < w.length; i += n) parts.push(w.slice(i, i + n));
+    const L = parts.length; if (L > 1 && parts[L - 1].length === 1 && parts[L - 2].length > 2) parts[L - 1].unshift(parts[L - 2].pop());
+    parts.forEach(p => out.push(p.join(' ')));
+  });
+  return out;
+}
+
 /* ===== boot ===== */
 async function boot() {
   const img = new Image(); img.src = 'assets/logo.jpg';
   const logo = { id: 'logo', name: 'לוגו AI Finance', kind: 'image', builtin: true, img, url: 'assets/logo.jpg', thumb: 'assets/logo.jpg', w: 1600, h: 1247, duration: 4, blob: { size: 0 } };
-  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; requestDraw(); };
+  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; buildLogoCuts(img); requestDraw(); if (typeof renderPanel === 'function') renderPanel(); };
   S.media.set('logo', logo);
   S.p = demoProject(); let restored = false;
   try {

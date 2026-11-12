@@ -35,7 +35,6 @@ function projectBrief() {
 }
 
 /* ----- create ----- */
-function chunkWords(s, n) { const w = String(s || '').trim().split(/\s+/).filter(Boolean), o = []; for (let i = 0; i < w.length; i += n) o.push(w.slice(i, i + n).join(' ')); return o; }
 function buildFromPlan(plan, fmt) {
   const p = newProject(); p.name = String(plan.title || 'סרטון חדש').slice(0, 60); p.fmt = fmt; p.w = FORMATS[fmt][0]; p.h = FORMATS[fmt][1];
   p.cap.style = 'karaoke'; p.cap.size = fmt === '16:9' ? 54 : 62;
@@ -52,21 +51,24 @@ function buildFromPlan(plan, fmt) {
       c.kf = zoom(d).map(k => Object.assign(k, { y: c.y })); p.clips.push(c);
       if (hasBody) p.clips.push(mkText({ trackId: 'v2', start: t + 0.35, dur: d - 0.35, text: String(s.body), size: 52, weight: 500, y: tall ? 0.08 : 0.14, anim: 'slide' }));
     }
-    const ch = chunkWords(s.narration, 4), tot = ch.reduce((a, c) => a + c.length + 2, 0); let pos = t;
+    const ch = chunkText(s.narration, 4), tot = ch.reduce((a, c) => a + c.length + 2, 0); let pos = t;
     ch.forEach(x => { const dd = d * (x.length + 2) / tot; p.clips.push(mkClip({ type: 'caption', trackId: 'cap', start: +pos.toFixed(3), dur: +dd.toFixed(3), text: x })); pos += dd; });
     t += d;
   });
   // text tracks: body lines live on a second text track
   const v2 = p.tracks.find(x => x.id === 'v2'); v2.type = 'text'; v2.name = 'טקסט משני';
   const bug = { id: 'bug', type: 'video', name: 'לוגו' }; p.tracks.splice(p.tracks.findIndex(x => x.id === 'v1'), 0, bug);
-  if (t > 0) p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: 'bug', start: 0, dur: t, fit: 'contain', scale: tall ? 0.24 : 0.18, x: tall ? 0.33 : 0.38, y: tall ? -0.44 : -0.36, opacity: 0.92 }));
-  p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: 'v1', start: t, dur: 2.2, tin: 'fade', kf: zoom(2.2) }));
-  S.p = p; S.sel = null; setCanvas(); seek(0.5); commit();
+  S.p = p;
+  if (t > 0) p.clips.push(logoBug('bug', t));
+  // closing card: the logo and the community's promise, in every format
+  p.clips.push(brandCard({ trackId: 'v1', start: t, dur: 3, tin: 'fade' }));
+  p.clips.push(taglineClip({ trackId: 'txt', start: t + 0.5, dur: 2.5 }));
+  S.sel = null; setCanvas(); seek(0.5); commit();
 }
 async function aiMake() {
   const brief = ($('#aiBrief') ? $('#aiBrief').value : '').trim(); if (!brief) return toast('כתבי על מה הסרטון');
   const tp = TEMPLATES[aiTpl];
-  const plan = await aiJSON(`You are the senior content editor and video director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) bridging finance and AI. Plan a short social video in HEBREW.
+  const plan = await aiJSON(`You are the senior content editor and video director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". Every video must serve that promise: it takes a real task from a finance professional's work and shows, in plain practical terms, how AI helps with it. Speak as a peer from inside the profession, not as a tech vendor. Plan a short social video in HEBREW.
 
 Topic / brief from the creator:
 ${brief}
