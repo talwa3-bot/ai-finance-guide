@@ -353,8 +353,16 @@ async function saveBlob(data, filename) {
 const safeName = () => (S.p.name || 'video').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'video';
 
 /* ===== modal + export ===== */
-function modal(html) { $('#mbox').innerHTML = html; $('#modal').hidden = false; }
-function closeModal() { const v = $('#mbox video'); if (v) { v.pause(); URL.revokeObjectURL(v.src); } $('#modal').hidden = true; $('#mbox').innerHTML = ''; }
+// A silence preview is temporary and never saved with the project.
+let pendingSilence = null;
+function modal(html) { pendingSilence = null; $('#mbox').removeAttribute('aria-labelledby'); $('#mbox').innerHTML = html; $('#modal').hidden = false; }
+function closeModal() {
+  const wasSilence = !!pendingSilence; pendingSilence = null;
+  const v = $('#mbox video'); if (v) { v.pause(); URL.revokeObjectURL(v.src); }
+  $('#modal').hidden = true; $('#mbox').innerHTML = ''; $('#mbox').removeAttribute('aria-labelledby');
+  if (wasSilence) $('[data-a=silence]').focus();
+}
+$('#modal').addEventListener('click', e => { if (e.target === e.currentTarget && pendingSilence) closeModal(); });
 let expQ = '1080';
 function openExport() {
   pause(); const mime = pickMime(), d = projDur();
@@ -421,6 +429,25 @@ const ACT = {
     const out = []; segs.forEach(([x, y]) => { x = Math.max(a, x - pad); y = Math.min(b, y + pad); const l = out[out.length - 1]; if (l && x <= l[1]) l[1] = y; else out.push([x, y]); });
     const kept = out.reduce((t, [x, y]) => t + (y - x) / R / c.speed, 0), removed = c.dur - kept;
     if (!out.length || removed < 0.3) return toast('לא נמצאו שתיקות משמעותיות');
+    pause();
+    modal(`<h3 id="silenceTitle">להסיר את השתיקות?</h3>
+      <p class="hint">השתיקות נשמרות כברירת מחדל. רק אישור כאן יסיר אותן מהקליפ שנבחר: <strong>${esc(m.name)}</strong>.</p>
+      <p>יוסרו כ־<strong>${removed.toFixed(1)} שניות</strong>. אורך הקליפ ישתנה מ־${c.dur.toFixed(1)} ל־${kept.toFixed(1)} שניות.</p>
+      <p class="hint">הקליפים הבאים באותו ערוץ יוזזו בהתאם. קובץ המקור לא ישתנה, ואפשר להחזיר את העריכה עם ״בטל״.</p>
+      <div class="rowf"><button type="button" class="btn" data-a="closeModal">ביטול, להשאיר את השתיקות</button><button type="button" class="btn primary" data-a="silenceGo">אישור הסרת ${removed.toFixed(1)} שניות</button></div>`);
+    pendingSilence = { clipId: c.id, project: snap(), out, removed };
+    $('#mbox').setAttribute('aria-labelledby', 'silenceTitle');
+    $('#mbox [data-a=closeModal]').focus();
+  },
+  silenceGo() {
+    const plan = pendingSilence;
+    if (!plan || $('#modal').hidden || !$('#mbox [data-a=silenceGo]')) return;
+    const c = selClip();
+    if (!c || c.id !== plan.clipId || snap() !== plan.project) {
+      closeModal(); return toast('הפרויקט השתנה. בדקי שוב את השתיקות לפני אישור ההסרה.');
+    }
+    // Consume this one-use approval before making any edit.
+    const { out, removed } = plan, R = PEAK_RATE; closeModal();
     const end = c.start + c.dur; let pos = c.start; const fresh = out.map(([x, y]) => { const n = clone(c); n.id = uid(); n.kf = []; n.in = x / R; n.dur = (y - x) / R / c.speed; n.start = +pos.toFixed(3); n.fadeIn = n.fadeOut = 0; n.tin = n.tout = 'none'; pos += n.dur; return n; });
     S.p.clips.forEach(x => { if (x !== c && x.trackId === c.trackId && x.start >= end - 1e-3) x.start -= removed; });
     S.p.clips = S.p.clips.filter(x => x !== c).concat(fresh); S.sel = fresh[0].id; commit(); toast('הוסרו ' + removed.toFixed(1) + ' שניות של שתיקה');
@@ -535,6 +562,12 @@ document.addEventListener('drop', e => { e.preventDefault(); const fs = [...(e.d
 
 /* ===== keyboard ===== */
 document.addEventListener('keydown', e => {
+  if (pendingSilence && e.key === 'Tab') {
+    const buttons = $$('#mbox button'), first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !$('#mbox').contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !$('#mbox').contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    return;
+  }
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'range') return;
   if (!$('#modal').hidden) { if (e.key === 'Escape' && !S.exporting) closeModal(); return; }
   const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
@@ -570,3 +603,4 @@ async function boot() {
   }
 }
 window.addEventListener('DOMContentLoaded', boot);
+
