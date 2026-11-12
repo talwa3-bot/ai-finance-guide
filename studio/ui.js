@@ -235,7 +235,7 @@ const PANELS = {
     const items = [...S.media.values()].map(m => `<div class="mi"><div class="th" style="${m.thumb ? `background-image:url('${m.thumb}')` : ''}">${m.thumb ? '' : 'שמע'}</div>
       <div class="nm"><b>${esc(m.name)}</b><small>${m.kind === 'image' ? 'תמונה' : fmtT(m.duration)}${m.w ? ' · ' + m.w + '×' + m.h : ''}</small></div>
       <button type="button" class="btn sm" data-a="addMedia" data-v="${m.id}">הוספה</button>${m.builtin ? '' : `<button type="button" class="x" data-a="delMedia" data-v="${m.id}" aria-label="מחיקה">✕</button>`}</div>`).join('');
-    return `<button type="button" class="drop" data-a="upload"><b>העלאת סרטון</b><span class="hint">מעלים סרטון והעריכה מתחילה לבד: הסרת שתיקות, לוגו, כותרת פתיחה וסיומת. הקבצים נשארים במכשיר שלך.</span></button><button type="button" class="btn wide gold" data-a="autoEdit" style="margin-top:8px"${S.p.clips.some(c => c.type === 'video') ? '' : ' disabled'}>עריכה אוטומטית מחדש</button><div class="col" style="margin-top:10px">${items}</div>`;
+    return `<button type="button" class="drop" data-a="upload"><b>העלאת סרטון</b><span class="hint">מעלים סרטון, והעורך בונה ממנו סרטון שיווקי לבד: חיתוך, כתוביות, כותרת, נקודות מפתח, שקפי ביניים, לוגו וסיומת. הקובץ נשאר במכשיר. כדי להבין את התוכן, הקול עובר לזיהוי הדיבור של הדפדפן ותמונות עצירה נשלחות לקלוד.</span></button><button type="button" class="btn wide gold" data-a="autoEdit" style="margin-top:8px"${S.p.clips.some(c => c.type === 'video') ? '' : ' disabled'}>עריכה אוטומטית מחדש</button><div class="col" style="margin-top:10px">${items}</div>`;
   },
   text() {
     return `<h4>הוספת טקסט בסמן</h4><div class="col">${Object.entries(TEXT_PRESETS).map(([k, v]) => `<button type="button" class="btn" data-a="addPreset" data-v="${k}">${v[0]}</button>`).join('')}</div>
@@ -550,9 +550,7 @@ async function handleFiles(files) {
   for (const f of files) { try { toast('טוען את ' + f.name + '...'); got.push(await importFile(f)); } catch (e) { toast(e.message === 'load' ? 'לא הצלחתי לקרוא את ' + f.name : e.message); } }
   const vids = got.filter(m => m.kind === 'video');
   if (fresh && vids.length && typeof autoEdit === 'function') {
-    S.p = newProject(); S.p.name = vids[0].name.replace(/\.[^.]+$/, '').slice(0, 60) || 'סרטון חדש'; S.sel = null; setCanvas();
-    got.filter(m => m.kind !== 'image').forEach(m => addMedia(m));
-    setTab('media'); return autoEdit();
+    return autoEdit(got.filter(m => m.kind !== 'image').map(m => m.id));
   }
   if (got.length === 1) addMedia(got[0]); else if (got.length) toast(got.length + ' קבצים נוספו לספרייה');
   setTab(isMobile() && got.length === 1 ? 'edit' : 'media');
