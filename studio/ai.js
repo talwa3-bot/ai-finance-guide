@@ -1,5 +1,12 @@
 'use strict';
 /* ===== AI studio: create, edit, critique, trends ===== */
+// Who Claude is writing for. AI Finance by default; a replaced brand speaks for itself.
+function brandCtx() {
+  const b = S.brand;
+  if (b.name === BRAND0.name && !String(b.about).trim()) return 'AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI"';
+  return 'the brand "' + b.name + '"' + (String(b.tagline).trim() ? ', whose tagline is "' + String(b.tagline).replace(/\s+/g, ' ').trim() + '"' : '') + (String(b.about).trim() ? '. Its owner describes the brand and its audience as: ' + String(b.about).trim() : '') + '. Write for that audience and in that spirit';
+}
+const brandIsDefault = () => S.brand.name === BRAND0.name && !String(S.brand.about).trim();
 let aiSec = 'make', aiCrit = null, aiStatus = '', aiPost = '', aiTpl = 'problem', aiFmt = '9:16', aiLen = 30;
 const TRENDS_DATE = '12.11.2026';
 const TREND_RULES = [
@@ -35,11 +42,10 @@ function projectBrief() {
 }
 
 /* ----- create ----- */
-function chunkWords(s, n) { const w = String(s || '').trim().split(/\s+/).filter(Boolean), o = []; for (let i = 0; i < w.length; i += n) o.push(w.slice(i, i + n).join(' ')); return o; }
 function buildFromPlan(plan, fmt) {
   const p = newProject(); p.name = String(plan.title || 'סרטון חדש').slice(0, 60); p.fmt = fmt; p.w = FORMATS[fmt][0]; p.h = FORMATS[fmt][1];
   p.cap.style = 'karaoke'; p.cap.size = fmt === '16:9' ? 54 : 62;
-  const tall = p.h > p.w, bgs = [BRAND.deep, BRAND.ink, '#0A2390']; let t = 0;
+  const tall = p.h > p.w, bgs = S.brand.color !== BRAND.deep ? [S.brand.color, S.brand.color, S.brand.color] : [BRAND.deep, BRAND.ink, '#0A2390']; let t = 0;
   const zoom = d => [{ t: 0, x: 0, y: 0, scale: 1, rot: 0, opacity: 1 }, { t: +d.toFixed(3), x: 0, y: 0, scale: 1.06, rot: 0, opacity: 1 }];
   (plan.scenes || []).slice(0, 12).forEach((s, i) => {
     const d = clamp(+s.seconds || 4, 1.5, 12), hook = i === 0, hasBody = !!(s.body && String(s.body).trim());
@@ -52,27 +58,30 @@ function buildFromPlan(plan, fmt) {
       c.kf = zoom(d).map(k => Object.assign(k, { y: c.y })); p.clips.push(c);
       if (hasBody) p.clips.push(mkText({ trackId: 'v2', start: t + 0.35, dur: d - 0.35, text: String(s.body), size: 52, weight: 500, y: tall ? 0.08 : 0.14, anim: 'slide' }));
     }
-    const ch = chunkWords(s.narration, 4), tot = ch.reduce((a, c) => a + c.length + 2, 0); let pos = t;
+    const ch = chunkText(s.narration, 4), tot = ch.reduce((a, c) => a + c.length + 2, 0); let pos = t;
     ch.forEach(x => { const dd = d * (x.length + 2) / tot; p.clips.push(mkClip({ type: 'caption', trackId: 'cap', start: +pos.toFixed(3), dur: +dd.toFixed(3), text: x })); pos += dd; });
     t += d;
   });
   // text tracks: body lines live on a second text track
   const v2 = p.tracks.find(x => x.id === 'v2'); v2.type = 'text'; v2.name = 'טקסט משני';
   const bug = { id: 'bug', type: 'video', name: 'לוגו' }; p.tracks.splice(p.tracks.findIndex(x => x.id === 'v1'), 0, bug);
-  if (t > 0) p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: 'bug', start: 0, dur: t, fit: 'contain', scale: tall ? 0.24 : 0.18, x: tall ? 0.33 : 0.38, y: tall ? -0.44 : -0.36, opacity: 0.92 }));
-  p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: 'v1', start: t, dur: 2.2, tin: 'fade', kf: zoom(2.2) }));
-  S.p = p; S.sel = null; setCanvas(); seek(0.5); commit();
+  S.p = p;
+  if (t > 0) p.clips.push(logoBug('bug', t));
+  // closing card: the logo and the community's promise, in every format
+  p.clips.push(brandCard({ trackId: 'v1', start: t, dur: 3, tin: 'fade' }));
+  pushTag({ trackId: 'txt', start: t + 0.5, dur: 2.5 });
+  S.sel = null; setCanvas(); seek(0.5); commit();
 }
 async function aiMake() {
   const brief = ($('#aiBrief') ? $('#aiBrief').value : '').trim(); if (!brief) return toast('כתבי על מה הסרטון');
   const tp = TEMPLATES[aiTpl];
-  const plan = await aiJSON(`You are the senior content editor and video director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) bridging finance and AI. Plan a short social video in HEBREW.
+  const plan = await aiJSON(`You are the senior content editor and video director of ${brandCtx()}. ${brandIsDefault() ? "Every video must serve that promise: it takes a real task from a finance professional's work and shows, in plain practical terms, how AI helps with it. Speak as a peer from inside the profession, not as a tech vendor." : ''} Plan a short social video in HEBREW.
 
 Topic / brief from the creator:
 ${brief}
 
 Format: ${aiFmt}. Target total length: ${aiLen} seconds. Structure to follow ("${tp[0]}"): ${tp[2]}.
-Rules: the first scene is the hook and lasts at most 3 seconds; one idea only; concrete and practical, no hype; headings up to 6 words; body up to 12 words; narration is what the on-screen captions will say for that scene (1-2 short spoken sentences that fit its seconds at a natural pace, about 2.5 Hebrew words per second); the last scene is a single call to action to join the AI Finance community; no emojis; no long dashes; do not mix English words inside Hebrew sentences (the name AI Finance is allowed). Never invent statistics: use a number only if the creator's brief contains it, otherwise do not use kind "number".
+Rules: the first scene is the hook and lasts at most 3 seconds; one idea only; concrete and practical, no hype; headings up to 6 words; body up to 12 words; narration is what the on-screen captions will say for that scene (1-2 short spoken sentences that fit its seconds at a natural pace, about 2.5 Hebrew words per second); the last scene is a single call to action: ${brandIsDefault() ? 'to join the AI Finance community' : (S.brand.cta || 'one clear next step')}; no emojis; no long dashes; do not mix English words inside Hebrew sentences (the brand name ${S.brand.name} is allowed). Never invent statistics: use a number only if the creator's brief contains it, otherwise do not use kind "number".
 
 Reply with only JSON: {"title": string, "scenes": [{"kind": "hook"|"point"|"number"|"quote"|"cta", "heading": string, "body": string, "number": string, "narration": string, "seconds": number}], "post": string}
 "post" is a LinkedIn post in Hebrew that accompanies the video: sharp first line, 900-1300 characters, short paragraphs, one call to action, then 5 hashtags in English only.`, 'קלוד כותב תסריט ובונה סצנות...');
@@ -148,6 +157,200 @@ function applyFixes() {
   if (n) { commit(); toast('הוחלו ' + n + ' תיקונים. אפשר לחזור אחורה עם בטל.'); } else toast('אין תיקונים אוטומטיים להחלה');
 }
 
+/* ----- automatic marketing edit of an uploaded video -----
+   Listen to the footage, understand it, then build a short marketing video around it:
+   tight cuts, burned-in captions, an opening hook, key points over the footage,
+   chapter cards between sections, the logo, and a closing card with one call to action. */
+let autoBusy = false;
+const autoStep = t => { const e = $('#autoStep'); if (e) e.textContent = t; };
+const autoBar = w => { const e = $('#autoBar'); if (e) e.style.width = clamp(w, 0, 100) + '%'; };
+const LISTEN_MAX = 240;
+
+// Speech to text in the browser. Plays the file silently at normal speed into the browser's speech
+// recognition, so it takes as long as the video. Resolves [{a, b, text}] in source seconds, or null.
+function transcribe(m, onProg) {
+  return new Promise(res => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // recognition from a media track ships together with these members; without them start() would open the microphone
+    if (!SR || !m || !m.url || m.duration > LISTEN_MAX || !(typeof SR.available === 'function' || 'processLocally' in SR.prototype)) return res(null);
+    const segs = []; let el, rec, tr, done = false, mark = 0, guard = 0;
+    const fin = () => { if (done) return; done = true; clearTimeout(guard); try { rec.onend = null; rec.stop(); } catch (e) { } try { el.pause(); el.removeAttribute('src'); el.load(); } catch (e) { } res(segs.length ? segs : null); };
+    try {
+      el = document.createElement(m.kind === 'video' ? 'video' : 'audio'); el.muted = true; el.playsInline = true; el.preload = 'auto'; el.src = m.url;
+      guard = setTimeout(fin, (m.duration * 1.3 + 10) * 1000); transcribe.cancel = fin;
+      // give up early when nothing plays, or when a long stretch passes and not one word was recognised
+      setTimeout(() => { if (!done && el.currentTime < 0.5) fin(); }, 8000);
+      setTimeout(() => { if (!done && !segs.length) fin(); }, 25000);
+      el.addEventListener('ended', () => setTimeout(fin, 1800)); el.addEventListener('error', fin);
+      el.addEventListener('timeupdate', () => onProg && onProg(el.currentTime / m.duration));
+      el.addEventListener('canplay', () => {
+        if (rec) return;
+        const st = el.captureStream ? el.captureStream() : null; tr = st && st.getAudioTracks()[0]; if (!tr) return fin();
+        rec = new SR(); rec.lang = 'he-IL'; rec.continuous = true; rec.interimResults = false;
+        rec.onresult = e => { for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (!r.isFinal) continue; const t = String(r[0].transcript || '').trim(), now = Math.max(0, el.currentTime - 0.5); if (t) segs.push({ a: mark, b: Math.max(now, mark + 0.4), text: t }); mark = now; } };
+        rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') fin(); };
+        rec.onend = () => { if (done || el.ended) return fin(); try { rec.start(tr); } catch (e) { fin(); } };
+        try { rec.start(tr); const p = el.play(); if (p) p.catch(fin); } catch (e) { fin(); }
+      }, { once: true });
+    } catch (e) { fin(); }
+  });
+}
+// source seconds of a file -> seconds on the timeline, after cuts; null when that moment was cut out
+function srcToTl(mediaId, ts) {
+  for (const c of S.p.clips) { if (c.mediaId !== mediaId || c.type !== 'video') continue; const e = c.in + c.dur * c.speed; if (ts >= c.in - 0.02 && ts < e) return c.start + (ts - c.in) / c.speed; }
+  return null;
+}
+function addCaptions(mediaId, segs) {
+  const tid = capTrack().id, out = [];
+  segs.forEach(sg => {
+    let A = srcToTl(mediaId, sg.a), B = srcToTl(mediaId, Math.max(sg.a, sg.b - 0.05)); if (A == null && B == null) return;
+    if (A == null) A = Math.max(0, B - (sg.b - sg.a)); if (B == null || B <= A) B = A + Math.max(0.8, sg.b - sg.a);
+    const ch = chunkText(sg.text, 4), tot = ch.reduce((n, x) => n + x.length + 2, 0); let pos = A;
+    ch.forEach(x => { const d = (B - A) * (x.length + 2) / tot; out.push(mkClip({ type: 'caption', trackId: tid, start: +pos.toFixed(3), dur: +d.toFixed(3), text: x, auto: true })); pos += d; });
+  });
+  out.sort((a, b) => a.start - b.start); out.forEach((c, i) => { const n = out[i + 1]; if (n && c.start + c.dur > n.start) c.dur = Math.max(0.2, n.start - c.start); c.dur = Math.max(c.dur, 0.35); });
+  S.p.clips.push(...out); return out.length;
+}
+// Open a gap at T for a chapter card. Prefers an existing cut near T; otherwise cuts the footage there.
+function insertCard(T, d, card) {
+  const vids = S.p.clips.filter(c => c.type === 'video'); if (!vids.length) return false; let best = null;
+  vids.forEach(c => [c.start, c.start + c.dur].forEach(b => { if (b > 1 && Math.abs(b - T) < 2.5 && (best === null || Math.abs(b - T) < Math.abs(best - T))) best = b; }));
+  if (best === null) {
+    S.p.clips.filter(c => isTimed(c) && T - c.start > 0.3 && c.start + c.dur - T > 0.3).forEach(c => { const cut = T - c.start, r = clone(c); r.id = uid(); r.start = T; r.dur = c.dur - cut; r.in = c.in + cut * c.speed; r.kf = []; r.fadeIn = 0; r.tin = 'none'; c.dur = cut; c.fadeOut = 0; c.tout = 'none'; S.p.clips.push(r); });
+    best = T;
+  }
+  T = best;
+  S.p.clips.forEach(c => { if (c.start >= T - 1e-3) c.start = +(c.start + d).toFixed(3); else if (c.start + c.dur > T + 1e-3 && (c.type === 'caption' || c.type === 'text')) c.dur = Math.max(0.2, T - c.start); });
+  const tall = S.p.h > S.p.w, tx = firstTrack('text').id; let t2 = S.p.tracks.find(t => t.type === 'text' && t.id !== tx);
+  if (!t2) { t2 = { id: uid(), type: 'text', name: 'טקסט 2' }; S.p.tracks.splice(S.p.tracks.findIndex(t => t.id === tx), 0, t2); }
+  const body = String(card.body || '').trim();
+  S.p.clips.push(mkClip({ brand: 'ins', type: 'solid', trackId: vids[0].trackId, start: T, dur: d, color: BRAND.deep, grad: true, tin: 'fade' }));
+  S.p.clips.push(mkText({ brand: 'ins', trackId: tx, start: T + 0.1, dur: d - 0.1, text: String(card.heading).trim(), size: tall ? 96 : 88, color: BRAND.gold, y: body ? (tall ? -0.1 : -0.1) : -0.02 }));
+  if (body) S.p.clips.push(mkText({ brand: 'ins', trackId: t2.id, start: T + 0.4, dur: d - 0.4, text: body, size: 52, weight: 500, y: tall ? 0.06 : 0.12, anim: 'slide' }));
+  return true;
+}
+// Numbered contact sheets of the whole video, so Claude sees it from start to end and can read
+// captions or on-screen text that are already part of the footage.
+async function contactSheets(lim, onProg) {
+  pause(); const was = S.t, sel = S.sel, D = projDur(), tall = S.p.h > S.p.w, cols = tall ? 4 : 3, rows = tall ? 3 : 4, per = cols * rows;
+  const N = Math.min(lim.maxCount * per, Math.max(per, Math.ceil(D / 1.0))), cw = tall ? 320 : 440, ch = Math.round(cw * S.p.h / S.p.w), times = [], sheets = [];
+  S.sel = null; let sc = null, x = null;
+  const flush = async () => { if (!sc) return; let q = 0.82, b = null; for (let i = 0; i < 4; i++) { b = await new Promise(r => sc.toBlob(r, 'image/jpeg', q)); if (!b || !lim.maxBytes || b.size <= lim.maxBytes) break; q -= 0.18; } if (b) sheets.push(b); sc = null; };
+  for (let i = 0; i < N; i++) {
+    if (i % per === 0) { await flush(); sc = document.createElement('canvas'); sc.width = cols * cw; sc.height = rows * ch; x = sc.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, sc.width, sc.height); }
+    const t = D * (i + 0.5) / N; times.push(+t.toFixed(1));
+    S.t = t; syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false;
+    const k = i % per, px = (k % cols) * cw, py = Math.floor(k / cols) * ch; x.drawImage(cv, px, py, cw, ch);
+    x.fillStyle = '#000'; x.fillRect(px, py, 46, 26); x.fillStyle = '#FFD23F'; x.font = '700 18px sans-serif'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillText(String(i + 1), px + 23, py + 14);
+    if (onProg) onProg((i + 1) / N);
+  }
+  await flush(); S.sel = sel; seek(was); return { sheets, times };
+}
+function askBrief() {
+  return new Promise(res => {
+    modal(`<h3>על מה הסרטון?</h3><p class="hint">במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון עצמו לא מצאתי כתוביות או טקסט שמסבירים את הנושא. משפט אחד מספיק, ואת כל השאר העורך עושה לבד.</p>
+    <textarea id="autoBrief" rows="2" placeholder="למשל: איך לבדוק התאמת בנקים עם בינה מלאכותית בעשר דקות"></textarea>
+    <div class="rowf" style="margin-top:10px"><button type="button" class="btn primary" data-a="autoGo">המשך</button><button type="button" class="btn" data-a="autoSkip">בלי נושא, רק חיתוך ומיתוג</button></div>`);
+    let over = false; const end = v => { if (over) return; over = true; clearInterval(iv); ACT.autoGo = ACT.autoSkip = () => { }; res(v); };
+    const iv = setInterval(() => { if ($('#modal').hidden || !$('#autoBrief')) end(''); }, 300);
+    ACT.autoGo = () => { const v = ($('#autoBrief').value || '').trim(); if (!v) return toast('כתבי משפט אחד על הנושא'); end(v); };
+    ACT.autoSkip = () => end('');
+  });
+}
+const autoProgress = t => modal(`<h3>בונה סרטון שיווקי...</h3><div class="bar"><i id="autoBar" style="width:4%"></i></div><p class="hint busy" id="autoStep">${esc(t)}</p><p class="hint">לא לסגור את המסך. בסוף יופיע סיכום.</p><button type="button" class="btn sm" data-a="autoNoListen" id="autoNoListen">לדלג על ההקשבה</button>`);
+async function planEdit(lines, brief, vis) {
+  const d = projDur(), has = lines.length > 0;
+  return AI.json(`You are the senior video editor and marketing director of ${brandCtx()}. A member uploaded a raw video. Dress it as a short marketing video that its audience will stop scrolling for. The footage itself stays exactly as it is: you only add an opening title, a few key points, and the closing call to action. Write everything in HEBREW.
+
+The cut footage is ${d.toFixed(1)} seconds long, format ${S.p.fmt}.
+${has ? 'Transcript of what is said, with the second on the timeline where each line starts:\n' + lines.map(l => '[' + l.t.toFixed(1) + '] ' + l.text).join('\n') : 'There is no transcript: the speech could not be heard.'}
+${brief ? 'The creator describes the video as: ' + brief : ''}
+${vis ? 'Attached: ' + vis.sheets.length + ' contact sheet(s) holding ' + vis.times.length + ' numbered frames of the video in time order. Frame number -> second on the timeline: ' + vis.times.map((t, i) => (i + 1) + '=' + t).join(', ') + '.\nLook at every frame. If the footage already carries burned-in captions or other on-screen text, read it frame by frame: those captions are the transcript of what is said, and the frame number tells you when. Set "burned" to true in that case.' : ''}
+
+Plan these elements:
+- "hook": the opening title for the first 3 seconds. Up to 6 words. It names the viewer's real pain or the concrete gain, never a greeting.
+- "points": up to 3 key points shown at the top of the screen at the moment each is said. Choose only the strongest ideas; fewer is better than weak ones. Each: "at" (second on the timeline, between 4 and ${Math.max(4, d - 3).toFixed(0)}, at least 8 seconds apart) and "text" (up to 5 words).
+- "cta": the single call to action on the closing card, up to 4 words.
+- "title": a short project name.
+- "post": a LinkedIn post that accompanies the video: sharp first line, 900 to 1300 characters, short paragraphs, one call to action, then 5 hashtags in English only.
+
+Hard rules: ${has ? 'every text must come from what is actually said in the transcript' : 'you did not hear the video. If you can read captions in the frames, every text must come from what those captions say. Otherwise every text may only frame the topic (a question, a promise, a section name) and must not claim what is said in it'}. Never invent facts, names, numbers or statistics. No emojis, no long dashes, no English words inside Hebrew sentences (the brand name ${S.brand.name} is allowed). Concrete and practical, no hype.
+${has || brief ? '' : 'If there are no readable captions and the frames do not clearly show what the video is about (for example only a person talking, with no text), set "understood" to false and leave the rest empty. Do not guess.'}
+Reply with only JSON: {"understood": boolean, "burned": boolean, "title": string, "hook": string, "points": [{"at": number, "text": string}], "cta": string, "post": string}`, vis && vis.sheets.length ? { images: vis.sheets, cache: false } : { cache: false });
+}
+// the top band: above a speaker's face, and far from captions near the bottom
+const TOPY = () => S.p.fmt === '9:16' ? -0.33 : S.p.h > S.p.w ? -0.36 : S.p.h === S.p.w ? -0.36 : -0.34;
+async function autoEdit(mediaIds) {
+  if (autoBusy) return;
+  // always rebuild from the raw footage, so a second pass replaces the first instead of stacking on it
+  const ids = mediaIds || [...new Set(S.p.clips.filter(isTimed).sort((a, b) => a.start - b.start).map(c => c.mediaId))];
+  const srcs = ids.map(id => S.media.get(id)).filter(m => m && m.kind !== 'image'), vids = srcs.filter(m => m.kind === 'video');
+  if (!vids.length) return toast('קודם מעלים סרטון');
+  autoBusy = true; pause(); const done = [], skipped = [];
+  try {
+    const name = mediaIds ? vids[0].name.replace(/\.[^.]+$/, '').slice(0, 60) : S.p.name;
+    S.p = newProject(); S.p.name = name || 'סרטון חדש'; S.sel = null; setCanvas(); srcs.forEach(m => addMedia(m)); setTab('media');
+    // 1. listen
+    autoProgress('מקשיב לסרטון. זה לוקח בערך כאורך הסרטון');
+    const heard = new Map(); let n = 0;
+    for (const m of vids) { const segs = await transcribe(m, u => autoBar(4 + 40 * (n + u) / vids.length)); if (segs) heard.set(m.id, segs); n++; }
+    if (!$('#autoBar')) autoProgress('קלוד צופה בסרטון');
+    autoBar(46); { const sk = $('#autoNoListen'); if (sk) sk.remove(); }
+    // The footage itself is never cut or re-framed here. Trimming a finished clip by its sound level
+    // chops words and makes playback stutter; silence removal stays a manual tool on the timeline.
+    // 3. captions from what was heard
+    let caps = 0; heard.forEach((segs, id) => { caps += addCaptions(id, segs); });
+    if (caps) { S.p.cap.style = 'karaoke'; S.p.cap.size = S.p.fmt === '16:9' ? 54 : 62; done.push('כתוביות צרובות לפי הדיבור (' + caps + ')'); }
+    S.sel = null; refresh(); autoBar(55);
+    // 4. understand and plan
+    const lines = []; heard.forEach((segs, id) => segs.forEach(sg => { const t = srcToTl(id, sg.a); lines.push({ t: t == null ? (srcToTl(id, sg.b - 0.05) || 0) : t, text: sg.text }); })); lines.sort((a, b) => a.t - b.t);
+    let plan = null, brief = '';
+    if (AI) {
+      autoStep('קלוד צופה בסרטון ומתכנן את העריכה');
+      let frames = null; try { const lim = await AI.limits(); if (lim && lim.images && lim.images.maxCount) { const hold = S.p.clips; S.p.clips = hold.filter(c => c.type !== 'caption'); try { frames = await contactSheets({ maxCount: Math.min(4, lim.images.maxCount), maxBytes: lim.images.maxBytes }, u => autoBar(55 + 10 * u)); } finally { S.p.clips = hold; } } } catch (e) { frames = null; }
+      autoBar(65); autoStep('קלוד מתכנן את העריכה');
+      try {
+        plan = await planEdit(lines, '', frames);
+        if (!lines.length && !(plan && plan.understood && String(plan.hook || '').trim())) {
+          brief = await askBrief(); autoProgress('קלוד מתכנן את העריכה'); autoBar(70);
+          plan = brief ? await planEdit(lines, brief, frames) : null;
+        }
+      } catch (e) { if (e && e.code === 'not_granted') AI = null; plan = null; }
+    }
+    autoBar(85); autoStep('מרכיב את הסרטון');
+    // 5. build
+    const burned = !!(plan && plan.burned);
+    if (burned) { if (caps) { S.p.clips = S.p.clips.filter(c => !(c.type === 'caption' && c.auto)); const i = done.findIndex(t => t.startsWith('כתוביות צרובות')); if (i >= 0) done.splice(i, 1); } done.push('קראתי את הכתוביות שכבר נמצאות בסרטון, והעריכה נבנתה לפיהן'); }
+    if (plan) {
+      const D = projDur(), tall = S.p.h > S.p.w, hook = String(plan.hook || '').trim().slice(0, 80);
+      if (hook) { S.p.clips.push(mkText({ brand: 'hook', trackId: firstTrack('text').id, start: 0, dur: Math.min(3, D), text: hook, size: tall ? 80 : 84, color: BRAND.gold, stroke: true, y: TOPY(), anim: 'pop' })); done.push('כותרת פתיחה: ' + hook); }
+      let last = -9, np = 0;
+      (Array.isArray(plan.points) ? plan.points : []).map(p => ({ at: +p.at, text: String(p.text || '').trim() })).filter(p => p.text && p.at >= 3.6 && p.at < D - 2).sort((a, b) => a.at - b.at).slice(0, 3).forEach(p => {
+        if (p.at - last < 6) return; last = p.at; np++;
+        S.p.clips.push(mkText({ brand: 'point', trackId: firstTrack('text').id, start: +p.at.toFixed(2), dur: Math.min(3.2, D - p.at), text: p.text.slice(0, 60), size: 54, weight: 700, bgOn: true, bg: S.brand.color !== BRAND.deep ? S.brand.color : BRAND.blue, shadow: false, y: TOPY(), anim: 'fade' }));
+      });
+      if (np) done.push(np + ' נקודות מפתח בראש המסך, בזמן שהן נאמרות');
+      if (String(plan.title || '').trim()) S.p.name = String(plan.title).trim().slice(0, 60);
+      if (String(plan.post || '').trim()) { aiPost = String(plan.post); done.push('פוסט נלווה ללינקדאין, מחכה בלשונית במאי'); }
+    }
+    addOutro(); addBug();
+    { const bug = S.p.clips.find(c => c.brand === 'bug'), hk = S.p.clips.find(c => c.brand === 'hook'); if (bug && hk && bug.dur > hk.dur + 1) { bug.start = hk.dur; bug.dur -= hk.dur; bug.tin = 'fade'; } }
+    const cta = plan && String(plan.cta || '').trim().slice(0, 30), cc = S.p.clips.find(c => c.brand === 'cta'); if (cta && cc) { cc.text = cta; cc.autoCta = false; }
+    done.push('תג לוגו בפינה'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
+    const lastV = S.p.clips.filter(c => c.type === 'video').sort((a, b) => b.start - a.start)[0]; if (lastV) { lastV.tout = 'fade'; lastV.fadeOut = Math.min(0.4, lastV.dur / 2); }
+    // what could not be done, said plainly
+    if (!caps && !burned) skipped.push(vids.some(m => m.duration > LISTEN_MAX) ? 'כתוביות: הסרטון ארוך מארבע דקות, ולכן לא הקשבתי לו' : 'כתוביות: במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון אין כתוביות לקרוא');
+    if (!plan) skipped.push(AI ? (brief || lines.length ? 'תכנון העריכה לא הצליח הפעם. אפשר להריץ שוב' : 'כותרת, נקודות מפתח ושקפי ביניים: לא נוספו, כי הנושא לא ידוע ולא רציתי לנחש') : 'כותרת, נקודות מפתח ושקפי ביניים: נכתבים רק כשהעורך פתוח בתוך קלוד');
+    else if (!lines.length && !burned) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור, כי לא הצלחתי לשמוע אותו. כדאי לעבור עליהם');
+    autoBar(100); S.sel = null; commit(); seek(0); renderPanel();
+    modal(`<h3>הסרטון מוכן</h3><p class="hint">${esc(S.p.name)} · אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
+    <h4>מה נעשה</h4><div class="col">${done.map(t => `<div class="crit"><p>${esc(t)}</p></div>`).join('')}</div>
+    ${skipped.length ? `<h4>מה לא נעשה</h4><div class="col">${skipped.map(t => `<div class="crit"><p class="fx">${esc(t)}</p></div>`).join('')}</div>` : ''}
+    <div class="rowf" style="margin-top:12px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>`);
+  } catch (e) { closeModal(); commit(); toast('העריכה האוטומטית נעצרה באמצע. אפשר לחזור אחורה עם בטל.'); }
+  autoBusy = false;
+}
+
 /* ----- panel ----- */
 const SECS = [['make', 'יצירה'], ['edit', 'עריכת תוכן'], ['crit', 'ביקורת'], ['trend', 'טרנדים']];
 PANELS.ai = function () {
@@ -200,6 +403,9 @@ $('#panel').addEventListener('change', e => {
   if (e.target.id === 'aiLenSel') aiLen = +e.target.value;
 });
 Object.assign(ACT, {
+  autoEdit() { autoEdit(); },
+  autoNoListen() { if (transcribe.cancel) transcribe.cancel(); },
+  autoPlay() { closeModal(); seek(0); play(); },
   aiSec(v) { aiSec = v; renderPanel(); },
   aiMake() { aiMake(); },
   aiEditGo(v) { aiEdit(v); },

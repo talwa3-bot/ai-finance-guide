@@ -235,7 +235,7 @@ const PANELS = {
     const items = [...S.media.values()].map(m => `<div class="mi"><div class="th" style="${m.thumb ? `background-image:url('${m.thumb}')` : ''}">${m.thumb ? '' : 'שמע'}</div>
       <div class="nm"><b>${esc(m.name)}</b><small>${m.kind === 'image' ? 'תמונה' : fmtT(m.duration)}${m.w ? ' · ' + m.w + '×' + m.h : ''}</small></div>
       <button type="button" class="btn sm" data-a="addMedia" data-v="${m.id}">הוספה</button>${m.builtin ? '' : `<button type="button" class="x" data-a="delMedia" data-v="${m.id}" aria-label="מחיקה">✕</button>`}</div>`).join('');
-    return `<button type="button" class="drop" data-a="upload"><b>העלאת קבצים</b><span class="hint">וידאו, אודיו או תמונות. הקבצים נשארים במכשיר שלך ולא עולים לשום שרת.</span></button><div class="col" style="margin-top:10px">${items}</div>`;
+    return `<label class="drop" for="fileIn"><b>העלאת סרטון</b><span class="hint">מעלים סרטון, והעורך מלביש עליו סרטון שיווקי לבד: כותרת פתיחה, נקודות מפתח, לוגו וסיומת. הצילום עצמו לא נחתך. הקובץ נשאר במכשיר. כדי להבין את התוכן, הקול עובר לזיהוי הדיבור של הדפדפן ותמונות עצירה נשלחות לקלוד.</span></label><button type="button" class="btn wide gold" data-a="autoEdit" style="margin-top:8px"${S.p.clips.some(c => c.type === 'video') ? '' : ' disabled'}>עריכה אוטומטית מחדש</button><div class="col" style="margin-top:10px">${items}</div>`;
   },
   text() {
     return `<h4>הוספת טקסט בסמן</h4><div class="col">${Object.entries(TEXT_PRESETS).map(([k, v]) => `<button type="button" class="btn" data-a="addPreset" data-v="${k}">${v[0]}</button>`).join('')}</div>
@@ -255,7 +255,17 @@ const PANELS = {
     <h4>כתוביות בסרטון (${cues.length})</h4><div class="col">${cues.map(c => `<button type="button" class="cue${c.id === S.sel ? ' on' : ''}" data-a="cue" data-v="${c.id}"><small>${fmtT(c.start)}</small><span>${esc(c.text)}</span></button>`).join('') || '<p class="hint">עדיין אין כתוביות.</p>'}</div>`;
   },
   brand() {
-    return `<h4>הלוגו של AI Finance</h4><div class="col">
+    const b = S.brand, lg = S.media.get('logoMark') || S.media.get('logo') || {};
+    return `<h4>ערכת המותג</h4>
+    <div class="mi"><div class="th" style="background-image:url('${lg.thumb || ''}');background-size:contain;background-color:${esc(b.color)}"></div><div class="nm"><b>${b.custom ? 'הלוגו שלך' : 'לוגו AI Finance'}</b><small>מופיע בתג הפינה, בפתיח ובסיומת</small></div></div>
+    <div class="rowf" style="margin-top:6px"><label class="btn sm" for="logoIn" style="text-align:center;cursor:pointer">החלפת לוגו</label>${b.custom ? '<button type="button" class="btn sm" data-a="brReset">חזרה ל-AI Finance</button>' : ''}</div>
+    <p class="hint">הכי טוב קובץ PNG עם רקע שקוף. הלוגו נשמר במכשיר הזה.</p>
+    <label class="f two"><span>שם המותג</span><input class="in" id="brName" maxlength="40" value="${esc(b.name)}"></label>
+    <label class="f two"><span>סלוגן</span><textarea id="brTag" rows="2" maxlength="90">${esc(b.tagline)}</textarea></label>
+    <label class="f two"><span>קריאה לפעולה</span><input class="in" id="brCta" maxlength="30" value="${esc(b.cta)}"></label>
+    <label class="f two"><span>צבע רקע</span><input type="color" id="brColor" value="${esc(b.color)}"></label>
+    <label class="f two"><span>על המותג</span><textarea id="brAbout" rows="2" maxlength="300" placeholder="למי פונים ומה המסר. קלוד משתמש בזה כשהוא כותב">${esc(b.about)}</textarea></label>
+    <h4>הוספה לסרטון</h4><div class="col">
       <button type="button" class="btn" data-a="brIntro">פתיח עם הלוגו</button>
       <button type="button" class="btn" data-a="brOutro">סיומת עם הלוגו וקריאה לפעולה</button>
       <button type="button" class="btn" data-a="brBug">תג לוגו בפינה לכל אורך הסרטון</button></div>
@@ -281,6 +291,16 @@ $('#panel').addEventListener('input', e => {
   if (el.id === 'capFont') { S.p.cap.font = el.value; document.fonts && document.fonts.load('800 40px "' + el.value + '"').then(requestDraw); requestDraw(); }
 });
 $('#panel').addEventListener('change', e => { if (['capSize', 'capPos', 'capFont'].includes(e.target.id)) commit(); });
+// brand kit fields
+const BR_FIELDS = { brName: 'name', brTag: 'tagline', brCta: 'cta', brColor: 'color', brAbout: 'about' };
+$('#panel').addEventListener('input', e => { const k = BR_FIELDS[e.target.id]; if (!k) return; S.brand[k] = e.target.value; relayBrand(); requestDraw(); });
+$('#panel').addEventListener('change', e => { if (!BR_FIELDS[e.target.id]) return; if (!String(S.brand.name).trim()) S.brand.name = BRAND0.name; saveBrand(); commit(); });
+$('#logoIn').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|svg)$/i.test(f.name)) return toast('צריך קובץ תמונה: PNG, JPG או SVG');
+  if (!(await applyCustomLogo(f))) return toast('לא הצלחתי לקרוא את התמונה');
+  DB.putKV('brandLogo', f); saveBrand(); commit(); renderPanel(); toast('הלוגו הוחלף בכל הסרטון');
+});
 
 /* ===== clip creation ===== */
 function addClip(c, at) {
@@ -293,11 +313,17 @@ function addMedia(m) {
     const f = m.h > m.w * 1.2 ? '9:16' : m.w > m.h * 1.2 ? '16:9' : null;
     if (f && f !== S.p.fmt) { setFmt(f, true); toast('הפורמט הותאם לסרטון: ' + f); }
   }
-  const c = addClip(mkClip({ type: m.kind, mediaId: m.id, trackId: tr.id, dur: m.kind === 'image' ? 4 : m.duration }), 'end');
+  const cut = m.id === 'logoMark' || m.id === 'logoFull';
+  const c = addClip(mkClip(Object.assign({ type: m.kind, mediaId: m.id, trackId: tr.id, dur: m.kind === 'image' ? 4 : m.duration }, cut ? { fit: 'contain', scale: 0.8 } : {})), 'end');
   commit(); seek(c.start); if (isMobile()) setTab('edit');
 }
 function addText(o) { const tr = firstTrack('text'); const c = addClip(mkText(Object.assign({ trackId: tr.id }, o)), S.t); commit(); return c; }
-function setFmt(f, silent) { S.p.fmt = f; S.p.w = FORMATS[f][0]; S.p.h = FORMATS[f][1]; setCanvas(); if (!silent) commit(); }
+function setFmt(f, silent) {
+  S.p.fmt = f; S.p.w = FORMATS[f][0]; S.p.h = FORMATS[f][1];
+  // brand cards and the corner tag are laid out per format, so they follow a format change
+  relayBrand();
+  setCanvas(); if (!silent) commit();
+}
 function demoProject() {
   const p = newProject(); S.p = p;
   p.name = 'סרטון פתיחה AI Finance';
@@ -314,8 +340,7 @@ function spreadCaptions() {
   const txt = ($('#capScript').value || '').trim(); if (!txt) return toast('קודם מדביקים טקסט בתיבה');
   const n = clamp(+$('#capWords').value || 4, 1, 10), sel = selClip(); let a = 0, b = projDur();
   if (sel && (sel.type === 'video' || sel.type === 'audio')) { a = sel.start; b = sel.start + sel.dur; }
-  const chunks = [];
-  txt.replace(/([.!?…])\s+/g, '$1\n').split(/\n+/).forEach(s => { const w = s.trim().split(/\s+/).filter(Boolean); for (let i = 0; i < w.length; i += n) chunks.push(w.slice(i, i + n).join(' ')); });
+  const chunks = chunkText(txt, n);
   if (!chunks.length) return;
   const tid = capTrack().id, total = chunks.reduce((s, c) => s + c.length + 2, 0);
   S.p.clips = S.p.clips.filter(c => !(c.type === 'caption' && c.start < b && c.start + c.dur > a));
@@ -383,6 +408,38 @@ async function aiRun(prompt, onDone) {
   aiBusy = false; renderPanel();
 }
 
+/* ===== silence removal =====
+   Returns the seconds removed, or a short reason when nothing was done. Does not commit. */
+function removeSilence(c) {
+  const m = S.media.get(c.mediaId); if (!m || !m.peaks) return 'ניתוח השמע של הקובץ עוד לא מוכן, או שהקובץ גדול מדי';
+  const pk = m.peaks, R = PEAK_RATE, a = Math.floor(c.in * R), b = Math.min(pk.length, Math.ceil((c.in + c.dur * c.speed) * R));
+  let mx = 0; for (let i = a; i < b; i++) if (pk[i] > mx) mx = pk[i]; if (mx < 0.01) return 'הקליפ שקט לגמרי';
+  const th = mx * 0.07, minSil = 0.45 * R, pad = Math.round(0.1 * R), segs = []; let s = -1, last = -1;
+  for (let i = a; i < b; i++) { if (pk[i] > th) { if (s < 0) s = i; last = i; } else if (s >= 0 && i - last >= minSil) { segs.push([s, last + 1]); s = -1; } }
+  if (s >= 0) segs.push([s, last + 1]);
+  const out = []; segs.forEach(([x, y]) => { x = Math.max(a, x - pad); y = Math.min(b, y + pad); const l = out[out.length - 1]; if (l && x <= l[1]) l[1] = y; else out.push([x, y]); });
+  const kept = out.reduce((t, [x, y]) => t + (y - x) / R / c.speed, 0), removed = c.dur - kept;
+  if (!out.length || removed < 0.3) return 'לא נמצאו שתיקות משמעותיות';
+  const end = c.start + c.dur; let pos = c.start; const fresh = out.map(([x, y]) => { const n = clone(c); n.id = uid(); n.kf = []; n.in = x / R; n.dur = (y - x) / R / c.speed; n.start = +pos.toFixed(3); n.fadeIn = n.fadeOut = 0; n.tin = n.tout = 'none'; pos += n.dur; return n; });
+  S.p.clips.forEach(x => { if (x !== c && x.trackId === c.trackId && x.start >= end - 1e-3) x.start -= removed; });
+  S.p.clips = S.p.clips.filter(x => x !== c).concat(fresh); S.sel = fresh[0].id; return removed;
+}
+function addBug() {
+  let tr = S.p.tracks.find(t => t.type === 'video' && t.name === 'לוגו');
+  if (!tr) { tr = { id: uid(), type: 'video', name: 'לוגו' }; const i = S.p.tracks.findIndex(t => t.type === 'video'); S.p.tracks.splice(i < 0 ? 0 : i, 0, tr); }
+  S.p.clips = S.p.clips.filter(c => c.trackId !== tr.id);
+  S.p.clips.push(logoBug(tr.id, projDur()));
+}
+function addOutro() {
+  const tid = firstTrack('video', true).id, at = Math.max(trackEnd(tid), S.p.clips.length ? projDur() : 0), d = 4, tx = firstTrack('text').id;
+  S.p.clips.push(brandCard({ trackId: tid, start: at, dur: d, tin: 'fade' }));
+  pushTag({ trackId: tx, start: at + 0.4, dur: d - 0.4 });
+  let t2 = S.p.tracks.find(t => t.type === 'text' && t.id !== tx);
+  if (!t2) { t2 = { id: uid(), type: 'text', name: 'טקסט 2' }; S.p.tracks.splice(S.p.tracks.findIndex(t => t.id === tx), 0, t2); }
+  S.p.clips.push(mkText({ brand: 'cta', autoCta: true, trackId: t2.id, start: at + 0.8, dur: d - 0.8, text: S.brand.cta || BRAND0.cta, size: isWide() ? 50 : 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: isWide() ? 0.41 : S.p.fmt === '1:1' ? 0.34 : 0.3, shadow: false, anim: 'slide' }));
+  return at;
+}
+
 /* ===== actions ===== */
 const ACT = {
   play() { S.playing ? pause() : play(); }, toStart() { seek(0); }, toEnd() { seek(projDur()); },
@@ -412,18 +469,9 @@ const ACT = {
   },
   silence() {
     const c = selClip(); if (!c || (c.type !== 'video' && c.type !== 'audio')) return toast('בחרי קליפ וידאו או אודיו');
-    const m = S.media.get(c.mediaId); if (!m || !m.peaks) return toast('ניתוח השמע של הקובץ עוד לא מוכן, או שהקובץ גדול מדי');
-    const pk = m.peaks, R = PEAK_RATE, a = Math.floor(c.in * R), b = Math.min(pk.length, Math.ceil((c.in + c.dur * c.speed) * R));
-    let mx = 0; for (let i = a; i < b; i++) if (pk[i] > mx) mx = pk[i]; if (mx < 0.01) return toast('הקליפ שקט לגמרי');
-    const th = mx * 0.07, minSil = 0.45 * R, pad = Math.round(0.1 * R), segs = []; let s = -1, last = -1;
-    for (let i = a; i < b; i++) { if (pk[i] > th) { if (s < 0) s = i; last = i; } else if (s >= 0 && i - last >= minSil) { segs.push([s, last + 1]); s = -1; } }
-    if (s >= 0) segs.push([s, last + 1]);
-    const out = []; segs.forEach(([x, y]) => { x = Math.max(a, x - pad); y = Math.min(b, y + pad); const l = out[out.length - 1]; if (l && x <= l[1]) l[1] = y; else out.push([x, y]); });
-    const kept = out.reduce((t, [x, y]) => t + (y - x) / R / c.speed, 0), removed = c.dur - kept;
-    if (!out.length || removed < 0.3) return toast('לא נמצאו שתיקות משמעותיות');
-    const end = c.start + c.dur; let pos = c.start; const fresh = out.map(([x, y]) => { const n = clone(c); n.id = uid(); n.kf = []; n.in = x / R; n.dur = (y - x) / R / c.speed; n.start = +pos.toFixed(3); n.fadeIn = n.fadeOut = 0; n.tin = n.tout = 'none'; pos += n.dur; return n; });
-    S.p.clips.forEach(x => { if (x !== c && x.trackId === c.trackId && x.start >= end - 1e-3) x.start -= removed; });
-    S.p.clips = S.p.clips.filter(x => x !== c).concat(fresh); S.sel = fresh[0].id; commit(); toast('הוסרו ' + removed.toFixed(1) + ' שניות של שתיקה');
+    const r = removeSilence(c);
+    if (typeof r === 'string') return toast(r);
+    commit(); toast('הוסרו ' + r.toFixed(1) + ' שניות של שתיקה');
   },
   addText() { addText({}); if (isMobile()) setTab('edit'); },
   addPreset(v) { const pr = TEXT_PRESETS[v]; if (pr) { addText(clone(pr[1])); if (isMobile()) setTab('edit'); } },
@@ -454,23 +502,13 @@ const ACT = {
   cue(v) { const c = S.p.clips.find(x => x.id === v); if (c) { seek(c.start + 0.01); S.sel = v; renderTimeline(); renderInspector(); renderPanel(); } },
   brIntro() {
     const tid = firstTrack('video', true).id, d = 3; S.p.clips.forEach(c => { c.start += d; });
-    const b = { x: 0, y: 0, rot: 0, opacity: 1 };
-    S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tid, start: 0, dur: d, kf: [Object.assign({ t: 0, scale: 1 }, b), Object.assign({ t: d, scale: 1.1 }, b)], tin: 'fade', tout: 'fade' }));
-    commit(); seek(0); toast('נוסף פתיח של 3 שניות. שאר הקליפים זזו קדימה.');
+    S.p.clips.push(brandCard({ trackId: tid, start: 0, dur: d, tin: 'fade', tout: 'fade' }));
+    pushTag({ trackId: firstTrack('text').id, start: 0.5, dur: d - 0.5 });
+    commit(); seek(1.5); toast('נוסף פתיח של 3 שניות עם הלוגו והסלוגן. שאר הקליפים זזו קדימה.');
   },
-  brOutro() {
-    const tid = firstTrack('video', true).id, at = Math.max(trackEnd(tid), S.p.clips.length ? projDur() : 0), d = 4;
-    S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tid, start: at, dur: d, tin: 'fade', look: 'orig' }));
-    S.p.clips.push(mkText({ trackId: firstTrack('text').id, start: at + 0.5, dur: d - 0.5, text: 'הצטרפו לקהילה', size: 60, bgOn: true, bg: BRAND.gold, color: '#1B1400', y: 0.34, shadow: false, anim: 'slide' }));
-    commit(); seek(at + 1);
-  },
-  brBug() {
-    let tr = S.p.tracks.find(t => t.type === 'video' && t.name === 'לוגו');
-    if (!tr) { tr = { id: uid(), type: 'video', name: 'לוגו' }; const i = S.p.tracks.findIndex(t => t.type === 'video'); S.p.tracks.splice(i < 0 ? 0 : i, 0, tr); }
-    S.p.clips = S.p.clips.filter(c => c.trackId !== tr.id);
-    const v = S.p.h > S.p.w; S.p.clips.push(mkClip({ type: 'image', mediaId: 'logo', trackId: tr.id, start: 0, dur: projDur(), fit: 'contain', scale: v ? 0.3 : 0.18, x: v ? 0.3 : 0.38, y: v ? -0.42 : -0.36, opacity: 0.92 }));
-    commit(); toast('תג הלוגו נוסף בפינה. אפשר לגרור אותו על המסך.');
-  },
+  brOutro() { const at = addOutro(); commit(); seek(at + 2); },
+  brBug() { addBug(); commit(); toast('תג הלוגו נוסף בפינה. אפשר לגרור אותו על המסך.'); },
+  brReset() { resetLogo(); const keep = S.brand.custom; S.brand = Object.assign({}, BRAND0); DB.putKV('brandLogo', null); saveBrand(); relayBrand(); commit(); renderPanel(); toast('חזרנו למותג AI Finance'); },
   brCard() { const c = addClip(mkClip({ type: 'solid', trackId: firstTrack('video', true).id, dur: 4, color: BRAND.deep, grad: true }), 'end'); commit(); seek(c.start); },
   frame() { pause(); S.exporting = true; draw(); S.exporting = false; cv.toBlob(b => { requestDraw(); if (b) saveBlob(b, safeName() + '.png'); }, 'image/png'); },
   newProj() { modal(`<h3>פרויקט חדש</h3><p class="hint">ציר הזמן הנוכחי יימחק. הקבצים שהעלית נשארים בלשונית מדיה.</p><div class="rowf"><button type="button" class="btn primary" data-a="newProjGo">פתיחת פרויקט ריק</button><button type="button" class="btn" data-a="closeModal">ביטול</button></div>`); },
@@ -524,10 +562,15 @@ cv.addEventListener('wheel', e => {
 
 /* ===== files ===== */
 async function handleFiles(files) {
-  let ok = 0;
-  for (const f of files) { try { toast('טוען את ' + f.name + '...'); const m = await importFile(f); ok++; if (files.length === 1) addMedia(m); } catch (e) { toast(e.message === 'load' ? 'לא הצלחתי לקרוא את ' + f.name : e.message); } }
-  if (ok && files.length > 1) toast(ok + ' קבצים נוספו לספרייה');
-  setTab(isMobile() && files.length === 1 && ok ? 'edit' : 'media');
+  // A first video upload starts the automatic edit: nothing of the user's is on the timeline yet.
+  const fresh = !S.p.clips.some(c => c.mediaId && !(S.media.get(c.mediaId) || {}).builtin), got = [];
+  for (const f of files) { try { toast('טוען את ' + f.name + '...'); got.push(await importFile(f)); } catch (e) { toast(e.message === 'load' ? 'לא הצלחתי לקרוא את ' + f.name : e.message); } }
+  const vids = got.filter(m => m.kind === 'video');
+  if (fresh && vids.length && typeof autoEdit === 'function') {
+    return autoEdit(got.filter(m => m.kind !== 'image').map(m => m.id));
+  }
+  if (got.length === 1) addMedia(got[0]); else if (got.length) toast(got.length + ' קבצים נוספו לספרייה');
+  setTab(isMobile() && got.length === 1 ? 'edit' : 'media');
 }
 $('#fileIn').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) handleFiles(fs); });
 document.addEventListener('dragover', e => { e.preventDefault(); });
@@ -549,15 +592,103 @@ document.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', () => { if (!S.exporting) { const rs = isMobile() ? 0.5 : 1; if (rs !== RS) setCanvas(); else fitCanvas(); renderTimeline(); } });
 
+/* ===== logo cut-outs =====
+   The supplied logo is a photo on a blue backdrop. For a corner tag and for tall formats we lift the
+   wordmark off that backdrop (brightness becomes transparency), so it sits cleanly on any scene. */
+function logoCut(img, y0, y1) {
+  const k = img.naturalWidth / 1600, sx = Math.round(120 * k), sy = Math.round(y0 * k), w = Math.round(1400 * k), h = Math.round((y1 - y0) * k);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+  x.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h), a = d.data, fe = Math.round(26 * k);
+  for (let i = 0, p = 0; i < a.length; i += 4, p++) {
+    const lum = 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]; let u = clamp((lum - 78) / 92, 0, 1); u = u * u * (3 - 2 * u);
+    const px = p % w, py = (p / w) | 0, edge = Math.min(px, py, w - 1 - px, h - 1 - py); if (edge < fe) u *= edge / fe;
+    a[i + 3] = Math.round(255 * u);
+  }
+  x.putImageData(d, 0, 0); return c;
+}
+function buildLogoCuts(img) {
+  try {
+    [['logoMark', 'לוגו שקוף', 385, 712], ['logoFull', 'לוגו שקוף עם סלוגן', 385, 792]].forEach(([id, name, y0, y1]) => {
+      const c = logoCut(img, y0, y1);
+      S.media.set(id, { id, name, kind: 'image', builtin: true, img: c, url: '', thumb: c.toDataURL('image/png'), w: c.width, h: c.height, duration: 4, blob: { size: 0 } });
+    });
+  } catch (e) { }
+}
+// One branded card for openers and closers. Wide formats use the full logo artwork; tall and square
+// formats use the clear wordmark on the brand backdrop, because the artwork would be cropped there.
+const isWide = () => S.p.w / S.p.h >= 1.5;
+// size a logo by the room it may take, whatever its proportions: a share of the width, capped by height
+function logoScale(id, wFrac, hFrac) {
+  const m = S.media.get(id); if (!m || !m.w || !m.h) return { s: wFrac, wf: wFrac, hf: 0.1 };
+  const W = S.p.w, H = S.p.h, k = Math.min(wFrac * W / m.w, hFrac * H / m.h), contain = Math.min(W / m.w, H / m.h);
+  return { s: k / contain, wf: k * m.w / W, hf: k * m.h / H };
+}
+function brandCard(o) {
+  const b = { x: 0, y: 0, rot: 0, opacity: 1 }, d = o.dur, kf = [Object.assign({ t: 0, scale: 1 }, b), Object.assign({ t: +d.toFixed(3), scale: 1.06 }, b)];
+  if (isWide() && !S.brand.custom) return mkClip(Object.assign({ type: 'image', mediaId: 'logo', brand: 'card', fit: 'cover', card: false, scale: 1, x: 0, y: 0, kf }, o));
+  const s = logoScale('logoFull', isWide() ? 0.5 : S.p.w === S.p.h ? 0.84 : 0.9, 0.3).s, y = -0.07;
+  return mkClip(Object.assign({ type: 'image', mediaId: 'logoFull', brand: 'card', fit: 'contain', card: true, scale: s, x: 0, y, kf: kf.map(k => Object.assign(k, { y, scale: k.scale * s })) }, o));
+}
+function taglineClip(o) {
+  const base = isWide() ? (S.brand.custom ? 0.2 : 0.25) : S.p.fmt === '1:1' ? 0.17 : S.p.fmt === '4:5' ? 0.14 : 0.1;
+  // a tall replacement logo pushes the tagline down, so the two never touch
+  const under = S.brand.custom ? -0.07 + logoScale('logoFull', isWide() ? 0.5 : S.p.w === S.p.h ? 0.84 : 0.9, 0.3).hf / 2 + 0.075 : 0;
+  return mkText(Object.assign({ brand: 'tag', text: S.brand.tagline, size: isWide() ? 40 : 54, weight: 500, color: '#FFFFFF', y: +Math.max(base, under).toFixed(3), anim: 'fade', shadow: true }, o));
+}
+// a brand with no tagline simply has none on its cards
+function pushTag(o) { if (String(S.brand.tagline || '').trim()) S.p.clips.push(taglineClip(o)); }
+function logoBug(trackId, dur) {
+  const v = S.p.h > S.p.w, sq = S.p.h === S.p.w, k = logoScale('logoMark', v ? 0.34 : sq ? 0.3 : 0.2, 0.085);
+  return mkClip({ type: 'image', mediaId: 'logoMark', brand: 'bug', trackId, start: 0, dur, fit: 'contain', scale: k.s, x: +(0.46 - k.wf / 2).toFixed(3), y: S.p.fmt === '9:16' ? -0.4 : v ? -0.43 : sq ? -0.42 : -0.4, opacity: 0.95 });
+}
+// re-lay every brand element: after a format change, or when the brand kit itself changes
+function relayBrand() {
+  S.p.clips.forEach(c => {
+    if (c.brand === 'card') { const n = brandCard({ dur: c.dur }); ['mediaId', 'fit', 'card', 'scale', 'x', 'y', 'kf'].forEach(k => c[k] = n[k]); }
+    else if (c.brand === 'bug') { const n = logoBug(c.trackId, c.dur); ['scale', 'x', 'y'].forEach(k => c[k] = n[k]); c.kf = []; }
+    else if (c.brand === 'tag') { const n = taglineClip({}); c.size = n.size; c.y = n.y; c.text = n.text; c.kf = []; }
+    else if (c.brand === 'cta' && c.autoCta) c.text = S.brand.cta || BRAND0.cta;
+  });
+  S.p.clips = S.p.clips.filter(c => !(c.brand === 'tag' && !String(c.text || '').trim()));
+}
+let LOGO0 = null;
+function setLogoMedia(img, custom) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  ['logo', 'logoMark', 'logoFull'].forEach(id => S.media.set(id, { id, name: id === 'logo' ? 'הלוגו שלך' : id === 'logoMark' ? 'הלוגו שלך, תג' : 'הלוגו שלך, כרטיס', kind: 'image', builtin: true, custom, img, url: img.src, thumb: img.src, w, h, duration: 4, blob: { size: 0 } }));
+}
+function applyCustomLogo(blob) {
+  return new Promise(res => { const img = new Image(); img.onload = () => { setLogoMedia(img, true); S.brand.custom = true; relayBrand(); requestDraw(); res(true); }; img.onerror = () => res(false); img.src = URL.createObjectURL(blob); });
+}
+function resetLogo() {
+  S.brand.custom = false; if (!LOGO0) return;
+  S.media.set('logo', { id: 'logo', name: 'לוגו AI Finance', kind: 'image', builtin: true, img: LOGO0, url: 'assets/logo.jpg', thumb: 'assets/logo.jpg', w: LOGO0.naturalWidth, h: LOGO0.naturalHeight, duration: 4, blob: { size: 0 } });
+  buildLogoCuts(LOGO0);
+}
+function saveBrand() { const b = Object.assign({}, S.brand); DB.putKV('brand', JSON.stringify(b)); }
+// Split a script into caption cues: never across a sentence end, and never a lone trailing word.
+function chunkText(s, n) {
+  const out = [];
+  String(s || '').replace(/([.!?…])\s+/g, '$1\n').split(/\n+/).forEach(sen => {
+    const w = nb(sen).trim().split(/[ \t]+/).filter(Boolean), parts = [];
+    for (let i = 0; i < w.length; i += n) parts.push(w.slice(i, i + n));
+    const L = parts.length; if (L > 1 && parts[L - 1].length === 1 && parts[L - 2].length > 2) parts[L - 1].unshift(parts[L - 2].pop());
+    parts.forEach(p => out.push(p.join(' ')));
+  });
+  return out;
+}
+
 /* ===== boot ===== */
 async function boot() {
   const img = new Image(); img.src = 'assets/logo.jpg';
   const logo = { id: 'logo', name: 'לוגו AI Finance', kind: 'image', builtin: true, img, url: 'assets/logo.jpg', thumb: 'assets/logo.jpg', w: 1600, h: 1247, duration: 4, blob: { size: 0 } };
-  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; requestDraw(); };
+  LOGO0 = img;
+  img.onload = () => { logo.w = img.naturalWidth; logo.h = img.naturalHeight; if (!S.brand.custom) buildLogoCuts(img); requestDraw(); if (typeof renderPanel === 'function') renderPanel(); };
   S.media.set('logo', logo);
   S.p = demoProject(); let restored = false;
   try {
     await DB.open(); const { pj, rows } = await DB.load();
+    try { const bj = await DB.getKV('brand'); if (bj) S.brand = Object.assign({}, BRAND0, JSON.parse(bj), { custom: false }); const lb = await DB.getKV('brandLogo'); if (lb) await applyCustomLogo(lb); } catch (e) { }
     for (const r of rows) { try { const m = await buildMedia(r); S.media.set(m.id, m); } catch (e) { } }
     if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) { S.p = normalizeProject(pj); restored = true; }
   } catch (e) { }

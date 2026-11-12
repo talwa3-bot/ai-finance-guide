@@ -10,9 +10,15 @@ const easeOut = u => 1 - Math.pow(1 - clamp(u, 0, 1), 3);
 const easeInOut = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 const easeBack = u => { u = clamp(u, 0, 1); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(u - 1, 3) + c1 * Math.pow(u - 1, 2); };
 const clone = o => JSON.parse(JSON.stringify(o));
+// The community name never breaks across lines.
+const nb = s => String(s == null ? '' : s).replace(/AI Finance/g, 'AI\u00A0Finance');
+const TAGLINE = 'מגשרים בין עולם הכספים\nלעולם הבינה המלאכותית';
 
 const FORMATS = { '16:9': [1920, 1080], '9:16': [1080, 1920], '1:1': [1080, 1080], '4:5': [1080, 1350] };
 const BRAND = { blue: '#0B2BA8', deep: '#061A6E', glow: '#7DB0FF', white: '#FFFFFF', gold: '#E9C46A', ink: '#050A26' };
+// The brand kit. The studio ships with AI Finance, and every part of it can be replaced.
+const BRAND0 = { custom: false, name: 'AI Finance', about: '', tagline: TAGLINE, cta: 'הצטרפו לקהילה', color: BRAND.deep };
+const lighten = (hex, k) => { const n = parseInt(String(hex).replace('#', ''), 16); if (isNaN(n)) return hex; const f = v => Math.round(v + (255 - v) * k); return 'rgb(' + f(n >> 16 & 255) + ',' + f(n >> 8 & 255) + ',' + f(n & 255) + ')'; };
 const LOOKS = {
   orig: ['מקור', ''], vivid: ['חי', 'saturate(1.35) contrast(1.08)'], cinema: ['קולנועי', 'contrast(1.15) saturate(0.85) sepia(0.12)'],
   soft: ['רך', 'contrast(0.92) brightness(1.06) saturate(0.95)'], bw: ['שחור-לבן', 'grayscale(1) contrast(1.1)'],
@@ -23,7 +29,7 @@ const PEAK_RATE = 50;
 const ACCEPT = { video: ['video', 'image', 'solid'], text: ['text'], caption: ['caption'], audio: ['audio'] };
 
 /* ===== state ===== */
-const S = { p: null, media: new Map(), sel: null, t: 0, playing: false, pps: 70, exporting: false, safe: false };
+const S = { brand: Object.assign({}, BRAND0), p: null, media: new Map(), sel: null, t: 0, playing: false, pps: 70, exporting: false, safe: false };
 const cv = $('#cv'), ctx = cv.getContext('2d');
 let RS = 1;
 
@@ -136,7 +142,7 @@ async function importFile(file) {
   if (!kind) throw new Error('סוג הקובץ ' + file.name + ' לא נתמך');
   const m = await buildMedia({ id: uid(), name: file.name, kind, blob: file });
   S.media.set(m.id, m);
-  if (kind !== 'image') computePeaks(file).then(p => { if (p) { m.peaks = p; DB.putMedia(m); if (typeof renderTimeline === 'function') renderTimeline(); } });
+  if (kind !== 'image') m.peaksReady = computePeaks(file).then(p => { if (p) { m.peaks = p; DB.putMedia(m); if (typeof renderTimeline === 'function') renderTimeline(); } });
   DB.putMedia(m);
   return m;
 }
@@ -159,6 +165,8 @@ const DB = {
       try { const t = DB.h.transaction(store, mode), rq = fn(t.objectStore(store)); t.oncomplete = () => res(rq && rq.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); } catch (e) { rej(e); }
     });
   },
+  putKV(k, v) { return DB.tx('kv', 'readwrite', s => v == null ? s.delete(k) : s.put(v, k)).catch(() => { }); },
+  getKV(k) { return DB.tx('kv', 'readonly', s => s.get(k)).catch(() => null); },
   putMedia(m) { if (m.builtin || m.blob.size > 400e6) return; DB.tx('media', 'readwrite', s => s.put({ id: m.id, name: m.name, kind: m.kind, blob: m.blob, duration: m.duration, w: m.w, h: m.h, thumb: m.kind === 'image' ? null : m.thumb, peaks: m.peaks || null })).catch(() => { }); },
   delMedia(id) { DB.tx('media', 'readwrite', s => s.delete(id)).catch(() => { }); },
   saveProject() { return DB.tx('kv', 'readwrite', s => s.put(JSON.stringify(S.p), 'project')); },
@@ -177,7 +185,23 @@ function ensureAudio() {
   if (!AC) { try { const A = window.AudioContext || window.webkitAudioContext; AC = new A(); MASTER = AC.createGain(); MASTER.connect(AC.destination); } catch (e) { AC = null; } }
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); EL.forEach(hook); }
 }
-const elKey = c => c.mediaId + '|' + c.trackId;
+// Each (file, track) pair gets two elements. A clip that continues its predecessor in the source keeps the
+// same one, so a plain split plays through with no seek. A jump cut (silence removed, a trimmed take) moves to
+// the other one, which was parked on the new position in advance, so the cut is instant and stays in sync.
+const isTimed = c => c.type === 'video' || c.type === 'audio';
+const SLOT = new Map();
+function assignSlots() {
+  SLOT.clear(); const by = new Map();
+  for (const c of S.p.clips) { if (!isTimed(c)) continue; const k = c.mediaId + '|' + c.trackId; (by.get(k) || by.set(k, []).get(k)).push(c); }
+  by.forEach(list => {
+    list.sort((a, b) => a.start - b.start); let slot = 0, prev = null;
+    for (const c of list) {
+      if (prev && !(Math.abs(c.in - (prev.in + prev.dur * prev.speed)) < 0.05 && Math.abs(c.start - (prev.start + prev.dur)) < 0.05 && c.speed === prev.speed)) slot ^= 1;
+      SLOT.set(c.id, slot); prev = c;
+    }
+  });
+}
+const elKey = c => c.mediaId + '|' + c.trackId + '|' + (SLOT.get(c.id) || 0);
 function getEl(c) {
   const k = elKey(c); let e = EL.get(k);
   if (!e) {
@@ -189,15 +213,14 @@ function getEl(c) {
   }
   return e;
 }
-const isTimed = c => c.type === 'video' || c.type === 'audio';
 function pruneEls() {
+  assignSlots();
   const keys = new Set(S.p.clips.filter(isTimed).map(elKey));
   EL.forEach((e, k) => { if (!keys.has(k)) { try { e.el.pause(); e.el.removeAttribute('src'); e.el.load(); if (e.gain) e.gain.disconnect(); } catch (x) { } EL.delete(k); } });
 }
-function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
-// Clips on one track never overlap, so each (file, track) pair shares a single element:
-// a plain split plays through with no seek, and a long cut-up clip does not open dozens of decoders.
+function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; if (e.el.volume !== 1) e.el.volume = 1; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
 function syncMedia() {
+  assignSlots();
   const t = S.t, act = new Map(), next = new Map();
   for (const c of S.p.clips) {
     if (!isTimed(c)) continue; const k = elKey(c), l = t - c.start;
@@ -208,7 +231,7 @@ function syncMedia() {
     const el = e.el, c = act.get(k);
     if (!c) {
       setGain(e, 0); if (!el.paused) el.pause();
-      const n = next.get(k); if (n && n.start - t < 1.2 && el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - n.in) > 0.05) el.currentTime = n.in;
+      const n = next.get(k); if (n && n.start - t < 4 && el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - n.in) > 0.05) el.currentTime = n.in;
       return;
     }
     const l = t - c.start, tr = trackById(c.trackId) || {}; let g = 0;
@@ -222,7 +245,7 @@ function syncMedia() {
     if (el.playbackRate !== c.speed) el.playbackRate = c.speed;
     if (S.playing) {
       if (el.paused) { if (Math.abs(el.currentTime - want) > 0.08) el.currentTime = want; const pr = el.play(); if (pr) pr.catch(() => { }); }
-      else if (Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
+      else if (!el.seeking && Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
     } else {
       if (!el.paused) el.pause();
       if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 0.03 && !el.seeking) el.currentTime = want;
@@ -250,8 +273,8 @@ function lookFilter(c) {
 function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
 function wrapLines(text, maxW) {
   const out = [];
-  for (const para of String(text).split('\n')) {
-    const words = para.split(/\s+/).filter(Boolean); let cur = '';
+  for (const para of nb(text).split('\n')) {
+    const words = para.split(/[ \t]+/).filter(Boolean); let cur = '';
     for (const w of words) { const tryL = cur ? cur + ' ' + w : w; if (cur && ctx.measureText(tryL).width > maxW) { out.push(cur); cur = w; } else cur = tryL; }
     out.push(cur);
   }
@@ -261,10 +284,12 @@ function draw() {
   const p = S.p, W = p.w, H = p.h, t = S.t;
   ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.shadowColor = 'transparent';
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  // the corner logo steps aside while a full brand card is on screen
+  const cardOn = p.clips.some(c => c.brand === 'card' && t >= c.start && t < c.start + c.dur);
   for (let i = p.tracks.length - 1; i >= 0; i--) {
     const tr = p.tracks[i]; if (tr.type === 'audio' || tr.hidden) continue;
     for (const c of p.clips) {
-      if (c.trackId !== tr.id) continue; const l = t - c.start; if (l < 0 || l >= c.dur) continue;
+      if (c.trackId !== tr.id || (cardOn && c.brand === 'bug')) continue; const l = t - c.start; if (l < 0 || l >= c.dur) continue;
       ctx.save(); try { drawClip(c, l, W, H); } catch (e) { } ctx.restore();
     }
   }
@@ -274,6 +299,7 @@ function drawSafe(W, H) {
   ctx.save(); ctx.strokeStyle = 'rgba(233,196,106,.9)'; ctx.setLineDash([14, 10]); ctx.lineWidth = 3;
   const v = H > W; ctx.strokeRect(W * 0.06, H * (v ? 0.12 : 0.06), W * (v ? 0.76 : 0.88), H * (v ? 0.66 : 0.88)); ctx.restore();
 }
+function brandGrad(w, h, color) { const g = ctx.createRadialGradient(0, -h * 0.1, 0, 0, 0, Math.max(w, h) * 0.75); const c = color || BRAND.deep; g.addColorStop(0, c === BRAND.deep ? '#1740D8' : lighten(c, 0.22)); g.addColorStop(1, c); return g; }
 function drawClip(c, l, W, H) {
   const pr = propsAt(c, l); let alpha = pr.opacity, sc = pr.scale, ox = pr.x * W, oy = pr.y * H;
   const td = Math.min(0.5, c.dur / 2);
@@ -285,7 +311,7 @@ function drawClip(c, l, W, H) {
   let src = null, sw = W, sh = H;
   if (c.type !== 'solid') {
     const m = S.media.get(c.mediaId); if (!m) return;
-    if (m.kind === 'image') { src = m.img; sw = m.w; sh = m.h; if (!src || !src.complete || !sw) return; }
+    if (m.kind === 'image') { src = m.img; sw = m.w; sh = m.h; if (!src || src.complete === false || !sw) return; }
     else { const e = getEl(c); if (!e) return; src = e.el; sw = src.videoWidth; sh = src.videoHeight; if (src.readyState < 2 || !sw) return; }
   }
   const cover = Math.max(W / sw, H / sh), contain = Math.min(W / sw, H / sh), base = c.fit === 'contain' ? contain : cover;
@@ -294,10 +320,12 @@ function drawClip(c, l, W, H) {
     ctx.translate(W / 2, H / 2); ctx.scale(cover * 1.12, cover * 1.12); ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh); ctx.restore();
   }
   ctx.globalAlpha = clamp(alpha, 0, 1);
+  // A brand card paints the royal-blue backdrop itself, so a logo with a clear background fills any format.
+  if (c.card) { ctx.save(); ctx.translate(W / 2, H / 2); ctx.fillStyle = brandGrad(W, H, S.brand.color || BRAND.deep); ctx.fillRect(-W / 2, -H / 2, W, H); ctx.restore(); }
   ctx.translate(W / 2 + ox, H / 2 + oy); ctx.rotate(pr.rot * Math.PI / 180); ctx.scale(base * sc, base * sc);
   const f = lookFilter(c); if (f) ctx.filter = f;
   if (c.type === 'solid') {
-    if (c.grad) { const g = ctx.createRadialGradient(0, -sh * 0.1, 0, 0, 0, Math.max(sw, sh) * 0.75); g.addColorStop(0, '#1740D8'); g.addColorStop(1, c.color); ctx.fillStyle = g; }
+    if (c.grad) ctx.fillStyle = brandGrad(sw, sh, c.color);
     else ctx.fillStyle = c.color;
     ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
   } else ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh);
@@ -340,7 +368,7 @@ function drawText(c, l, W, H, f) {
 function bidiOrder(ws) { const out = []; let run = []; for (const w of ws) { if (!isHeb(w.w) && /[A-Za-z0-9]/.test(w.w)) run.unshift(w); else { out.push(...run); run = []; out.push(w); } } out.push(...run); return out; }
 function drawCaption(c, l, W, H) {
   const cs = S.p.cap, ref = Math.min(W, H) / 1080, size = cs.size * ref;
-  const words = String(c.text || '').trim().split(/\s+/).filter(Boolean); if (!words.length) return;
+  const words = nb(c.text).trim().split(/[ \t\n]+/).filter(Boolean); if (!words.length) return;
   const n = words.length, prog = clamp(l / c.dur, 0, 0.9999), ai = Math.floor(prog * n), rtl = isHeb(c.text);
   const cy = cs.pos === 'top' ? H * 0.15 : cs.pos === 'mid' ? H * 0.5 : H * (H > W ? 0.74 : 0.85);
   ctx.direction = rtl ? 'rtl' : 'ltr'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
@@ -372,12 +400,18 @@ function drawCaption(c, l, W, H) {
 }
 
 /* ===== clock ===== */
-let lastTs = 0, dirty = true;
+let lastTs = 0, dirty = true, stallT = 0;
+function mediaStalled() {
+  for (const c of S.p.clips) { if (!isTimed(c)) continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = EL.get(elKey(c)); if (e && (e.el.seeking || e.el.readyState < 2)) return true; }
+  return false;
+}
 function requestDraw() { dirty = true; }
 function loop(ts) {
   requestAnimationFrame(loop);
   if (S.playing) {
-    const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts; S.t += Math.min(dt, 0.5);
+    const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts;
+    // hold the clock while footage on screen is still seeking, so picture and sound never drift apart
+    if (mediaStalled() && stallT < 1.5) stallT += dt; else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
     const d = projDur();
     if (S.t >= d) { S.t = Math.max(0, d - 0.001); pause(); if (S.exporting) finishExport(); }
     syncMedia(); draw(); uiTime();
@@ -386,6 +420,7 @@ function loop(ts) {
 function play() {
   ensureAudio();
   if (S.t >= projDur() - 0.05) S.t = 0;
+  assignSlots(); stallT = 0;
   for (const c of S.p.clips) if (isTimed(c)) getEl(c);
   EL.forEach(e => { if (!e.unlocked) { e.unlocked = true; setGain(e, 0); const pr = e.el.play(); if (pr) pr.catch(() => { }); } });
   S.playing = true; lastTs = 0; uiPlay();
