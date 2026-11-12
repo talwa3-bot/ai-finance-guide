@@ -150,6 +150,56 @@ function applyFixes() {
   if (n) { commit(); toast('הוחלו ' + n + ' תיקונים. אפשר לחזור אחורה עם בטל.'); } else toast('אין תיקונים אוטומטיים להחלה');
 }
 
+/* ----- automatic edit of an uploaded video ----- */
+let autoBusy = false;
+const autoStep = t => { const e = $('#autoStep'); if (e) e.textContent = t; };
+async function autoEdit() {
+  if (autoBusy || !S.p.clips.some(c => c.type === 'video')) return; autoBusy = true; pause();
+  modal(`<h3>עורך את הסרטון...</h3><div class="bar"><i id="autoBar" style="width:8%"></i></div><p class="hint busy" id="autoStep">מנתח את השמע</p>`);
+  const bar = w => { const e = $('#autoBar'); if (e) e.style.width = w + '%'; }, done = [], skipped = [];
+  try {
+    // start clean: an earlier automatic pass is replaced, not stacked
+    S.p.clips = S.p.clips.filter(c => !c.brand);
+    // 1. silences
+    const waits = [...new Set(S.p.clips.filter(c => c.type === 'video' || c.type === 'audio').map(c => S.media.get(c.mediaId)))].filter(m => m && m.peaksReady).map(m => m.peaksReady);
+    await Promise.race([Promise.all(waits), new Promise(r => setTimeout(r, 30000))]);
+    let removed = 0; for (const c of S.p.clips.filter(c => c.type === 'video')) { const r = removeSilence(c); if (typeof r === 'number') removed += r; }
+    removed ? done.push('הוסרו ' + removed.toFixed(1) + ' שניות של שתיקה') : skipped.push('לא נמצאו שתיקות להסרה');
+    bar(35); autoStep('מוסיף לוגו וסיומת');
+    // 2. brand: corner logo over the footage, closing card with the tagline and one call to action
+    const end = projDur(); addOutro(); addBug();
+    done.push('תג לוגו בפינה לכל אורך הסרטון'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
+    const last = S.p.clips.filter(c => c.type === 'video').sort((a, b) => b.start - a.start)[0]; if (last) { last.tout = 'fade'; last.fadeOut = Math.min(0.4, last.dur / 2); }
+    bar(55); S.sel = null; refresh();
+    // 3. opening title, only when the frames themselves show what the video is about
+    let hook = '';
+    if (AI) {
+      autoStep('קלוד צופה בסרטון וכותב כותרת פתיחה');
+      try {
+        const lim = await AI.limits(), max = lim && lim.images ? Math.min(4, lim.images.maxCount) : 0;
+        if (max) {
+          const was = S.p.clips.slice(); S.p.clips = was.filter(c => !c.brand); const cap = await captureFrames(max); S.p.clips = was;
+          const r = await AI.json(`You are the video editor of AI Finance, an Israeli community of finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". Attached are ${cap.frames.length} still frames from a raw video a member just uploaded. You cannot hear it.
+Write an opening title in HEBREW for the first three seconds: up to 6 words, concrete, no hype, no emojis, no long dashes, no English words inside the Hebrew (the name AI Finance is allowed).
+Use only what is clearly readable or visible in the frames, such as a slide, a screen, a document or on-screen text. Never guess the topic and never invent facts or numbers. If the frames do not clearly show what the video is about (for example, only a person talking), return an empty hook.
+Reply with only JSON: {"hook": string, "title": string} where "title" is a short Hebrew project name, or empty.`, { images: cap.frames, cache: false });
+          hook = String(r && r.hook || '').trim().slice(0, 80);
+          if (r && r.title && String(r.title).trim()) S.p.name = String(r.title).trim().slice(0, 60);
+        }
+      } catch (e) { if (e && e.code === 'not_granted') AI = null; }
+    }
+    if (hook) { S.p.clips.push(mkText(Object.assign(clone(TEXT_PRESETS.hook[1]), { brand: 'hook', trackId: firstTrack('text').id, start: 0, dur: Math.min(3, end), text: hook }))); done.push('כותרת פתיחה: ' + hook); }
+    else skipped.push(AI ? 'כותרת פתיחה: מהתמונות לא ברור מה נושא הסרטון, ולכן לא נוספה כותרת כדי לא לנחש' : 'כותרת פתיחה: נכתבת רק כשהעורך פתוח בתוך קלוד');
+    skipped.push('כתוביות: העורך לא שומע דיבור. אם יש קובץ כתוביות, מייבאים אותו בלשונית כתוביות');
+    bar(100); S.sel = null; commit(); seek(0); renderPanel();
+    modal(`<h3>הסרטון ערוך</h3><p class="hint">אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
+    <h4>מה נעשה</h4><div class="col">${done.map(t => `<div class="crit"><p>${esc(t)}</p></div>`).join('')}</div>
+    <h4>מה לא נעשה</h4><div class="col">${skipped.map(t => `<div class="crit"><p class="fx">${esc(t)}</p></div>`).join('')}</div>
+    <div class="rowf" style="margin-top:12px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>`);
+  } catch (e) { closeModal(); commit(); toast('העריכה האוטומטית נעצרה באמצע. אפשר לחזור אחורה עם בטל.'); }
+  autoBusy = false;
+}
+
 /* ----- panel ----- */
 const SECS = [['make', 'יצירה'], ['edit', 'עריכת תוכן'], ['crit', 'ביקורת'], ['trend', 'טרנדים']];
 PANELS.ai = function () {
@@ -202,6 +252,8 @@ $('#panel').addEventListener('change', e => {
   if (e.target.id === 'aiLenSel') aiLen = +e.target.value;
 });
 Object.assign(ACT, {
+  autoEdit() { autoEdit(); },
+  autoPlay() { closeModal(); seek(0); play(); },
   aiSec(v) { aiSec = v; renderPanel(); },
   aiMake() { aiMake(); },
   aiEditGo(v) { aiEdit(v); },

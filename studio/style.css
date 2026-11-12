@@ -41,7 +41,7 @@ select,.in{background:var(--panel2);border:1px solid var(--line);border-radius:8
 .tabs button.on{background:var(--panel2);color:var(--text);font-weight:700}
 .only-m{display:none}
 .panel{overflow:auto;padding:12px;flex:1;min-height:0}
-.panel h4,.insp h4{margin:14px 0 8px;font-size:12px;font-weight:700;color:var(--glow);letter-spacing:.02em}
+.panel h4,.insp h4,.mbox h4{margin:14px 0 8px;font-size:12px;font-weight:700;color:var(--glow);letter-spacing:.02em}
 .panel h4:first-child,.insp h4:first-child{margin-top:0}
 .hint{color:var(--muted);font-size:12px;margin:6px 0}
 .col{display:flex;flex-direction:column;gap:8px}

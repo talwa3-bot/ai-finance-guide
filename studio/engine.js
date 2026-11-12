@@ -139,7 +139,7 @@ async function importFile(file) {
   if (!kind) throw new Error('סוג הקובץ ' + file.name + ' לא נתמך');
   const m = await buildMedia({ id: uid(), name: file.name, kind, blob: file });
   S.media.set(m.id, m);
-  if (kind !== 'image') computePeaks(file).then(p => { if (p) { m.peaks = p; DB.putMedia(m); if (typeof renderTimeline === 'function') renderTimeline(); } });
+  if (kind !== 'image') m.peaksReady = computePeaks(file).then(p => { if (p) { m.peaks = p; DB.putMedia(m); if (typeof renderTimeline === 'function') renderTimeline(); } });
   DB.putMedia(m);
   return m;
 }
@@ -180,7 +180,23 @@ function ensureAudio() {
   if (!AC) { try { const A = window.AudioContext || window.webkitAudioContext; AC = new A(); MASTER = AC.createGain(); MASTER.connect(AC.destination); } catch (e) { AC = null; } }
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); EL.forEach(hook); }
 }
-const elKey = c => c.mediaId + '|' + c.trackId;
+// Each (file, track) pair gets two elements. A clip that continues its predecessor in the source keeps the
+// same one, so a plain split plays through with no seek. A jump cut (silence removed, a trimmed take) moves to
+// the other one, which was parked on the new position in advance, so the cut is instant and stays in sync.
+const isTimed = c => c.type === 'video' || c.type === 'audio';
+const SLOT = new Map();
+function assignSlots() {
+  SLOT.clear(); const by = new Map();
+  for (const c of S.p.clips) { if (!isTimed(c)) continue; const k = c.mediaId + '|' + c.trackId; (by.get(k) || by.set(k, []).get(k)).push(c); }
+  by.forEach(list => {
+    list.sort((a, b) => a.start - b.start); let slot = 0, prev = null;
+    for (const c of list) {
+      if (prev && !(Math.abs(c.in - (prev.in + prev.dur * prev.speed)) < 0.05 && Math.abs(c.start - (prev.start + prev.dur)) < 0.05 && c.speed === prev.speed)) slot ^= 1;
+      SLOT.set(c.id, slot); prev = c;
+    }
+  });
+}
+const elKey = c => c.mediaId + '|' + c.trackId + '|' + (SLOT.get(c.id) || 0);
 function getEl(c) {
   const k = elKey(c); let e = EL.get(k);
   if (!e) {
@@ -192,15 +208,14 @@ function getEl(c) {
   }
   return e;
 }
-const isTimed = c => c.type === 'video' || c.type === 'audio';
 function pruneEls() {
+  assignSlots();
   const keys = new Set(S.p.clips.filter(isTimed).map(elKey));
   EL.forEach((e, k) => { if (!keys.has(k)) { try { e.el.pause(); e.el.removeAttribute('src'); e.el.load(); if (e.gain) e.gain.disconnect(); } catch (x) { } EL.delete(k); } });
 }
-function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
-// Clips on one track never overlap, so each (file, track) pair shares a single element:
-// a plain split plays through with no seek, and a long cut-up clip does not open dozens of decoders.
+function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; if (e.el.volume !== 1) e.el.volume = 1; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
 function syncMedia() {
+  assignSlots();
   const t = S.t, act = new Map(), next = new Map();
   for (const c of S.p.clips) {
     if (!isTimed(c)) continue; const k = elKey(c), l = t - c.start;
@@ -211,7 +226,7 @@ function syncMedia() {
     const el = e.el, c = act.get(k);
     if (!c) {
       setGain(e, 0); if (!el.paused) el.pause();
-      const n = next.get(k); if (n && n.start - t < 1.2 && el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - n.in) > 0.05) el.currentTime = n.in;
+      const n = next.get(k); if (n && n.start - t < 4 && el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - n.in) > 0.05) el.currentTime = n.in;
       return;
     }
     const l = t - c.start, tr = trackById(c.trackId) || {}; let g = 0;
@@ -225,7 +240,7 @@ function syncMedia() {
     if (el.playbackRate !== c.speed) el.playbackRate = c.speed;
     if (S.playing) {
       if (el.paused) { if (Math.abs(el.currentTime - want) > 0.08) el.currentTime = want; const pr = el.play(); if (pr) pr.catch(() => { }); }
-      else if (Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
+      else if (!el.seeking && Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
     } else {
       if (!el.paused) el.pause();
       if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 0.03 && !el.seeking) el.currentTime = want;
@@ -380,12 +395,18 @@ function drawCaption(c, l, W, H) {
 }
 
 /* ===== clock ===== */
-let lastTs = 0, dirty = true;
+let lastTs = 0, dirty = true, stallT = 0;
+function mediaStalled() {
+  for (const c of S.p.clips) { if (!isTimed(c)) continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = EL.get(elKey(c)); if (e && (e.el.seeking || e.el.readyState < 2)) return true; }
+  return false;
+}
 function requestDraw() { dirty = true; }
 function loop(ts) {
   requestAnimationFrame(loop);
   if (S.playing) {
-    const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts; S.t += Math.min(dt, 0.5);
+    const dt = lastTs ? (ts - lastTs) / 1000 : 0; lastTs = ts;
+    // hold the clock while footage on screen is still seeking, so picture and sound never drift apart
+    if (mediaStalled() && stallT < 1.5) stallT += dt; else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
     const d = projDur();
     if (S.t >= d) { S.t = Math.max(0, d - 0.001); pause(); if (S.exporting) finishExport(); }
     syncMedia(); draw(); uiTime();
@@ -394,6 +415,7 @@ function loop(ts) {
 function play() {
   ensureAudio();
   if (S.t >= projDur() - 0.05) S.t = 0;
+  assignSlots(); stallT = 0;
   for (const c of S.p.clips) if (isTimed(c)) getEl(c);
   EL.forEach(e => { if (!e.unlocked) { e.unlocked = true; setGain(e, 0); const pr = e.el.play(); if (pr) pr.catch(() => { }); } });
   S.playing = true; lastTs = 0; uiPlay();
