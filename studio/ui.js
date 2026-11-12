@@ -408,22 +408,6 @@ async function aiRun(prompt, onDone) {
   aiBusy = false; renderPanel();
 }
 
-/* ===== silence removal =====
-   Returns the seconds removed, or a short reason when nothing was done. Does not commit. */
-function removeSilence(c) {
-  const m = S.media.get(c.mediaId); if (!m || !m.peaks) return 'ניתוח השמע של הקובץ עוד לא מוכן, או שהקובץ גדול מדי';
-  const pk = m.peaks, R = PEAK_RATE, a = Math.floor(c.in * R), b = Math.min(pk.length, Math.ceil((c.in + c.dur * c.speed) * R));
-  let mx = 0; for (let i = a; i < b; i++) if (pk[i] > mx) mx = pk[i]; if (mx < 0.01) return 'הקליפ שקט לגמרי';
-  const th = mx * 0.07, minSil = 0.45 * R, pad = Math.round(0.1 * R), segs = []; let s = -1, last = -1;
-  for (let i = a; i < b; i++) { if (pk[i] > th) { if (s < 0) s = i; last = i; } else if (s >= 0 && i - last >= minSil) { segs.push([s, last + 1]); s = -1; } }
-  if (s >= 0) segs.push([s, last + 1]);
-  const out = []; segs.forEach(([x, y]) => { x = Math.max(a, x - pad); y = Math.min(b, y + pad); const l = out[out.length - 1]; if (l && x <= l[1]) l[1] = y; else out.push([x, y]); });
-  const kept = out.reduce((t, [x, y]) => t + (y - x) / R / c.speed, 0), removed = c.dur - kept;
-  if (!out.length || removed < 0.3) return 'לא נמצאו שתיקות משמעותיות';
-  const end = c.start + c.dur; let pos = c.start; const fresh = out.map(([x, y]) => { const n = clone(c); n.id = uid(); n.kf = []; n.in = x / R; n.dur = (y - x) / R / c.speed; n.start = +pos.toFixed(3); n.fadeIn = n.fadeOut = 0; n.tin = n.tout = 'none'; pos += n.dur; return n; });
-  S.p.clips.forEach(x => { if (x !== c && x.trackId === c.trackId && x.start >= end - 1e-3) x.start -= removed; });
-  S.p.clips = S.p.clips.filter(x => x !== c).concat(fresh); S.sel = fresh[0].id; return removed;
-}
 function addBug() {
   let tr = S.p.tracks.find(t => t.type === 'video' && t.name === 'לוגו');
   if (!tr) { tr = { id: uid(), type: 'video', name: 'לוגו' }; const i = S.p.tracks.findIndex(t => t.type === 'video'); S.p.tracks.splice(i < 0 ? 0 : i, 0, tr); }
@@ -468,12 +452,6 @@ const ACT = {
     const c = selClip(), tid = c ? c.trackId : firstTrack('video', true).id; let pos = 0;
     S.p.clips.filter(x => x.trackId === tid).sort((a, b) => a.start - b.start).forEach(x => { x.start = +pos.toFixed(3); pos += x.dur; });
     commit(); toast('הרווחים בערוץ נסגרו');
-  },
-  silence() {
-    const c = selClip(); if (!c || (c.type !== 'video' && c.type !== 'audio')) return toast('בחרי קליפ וידאו או אודיו');
-    const r = removeSilence(c);
-    if (typeof r === 'string') return toast(r);
-    commit(); toast('הוסרו ' + r.toFixed(1) + ' שניות של שתיקה');
   },
   addText() { addText({}); if (isMobile()) setTab('edit'); },
   addPreset(v) { const pr = TEXT_PRESETS[v]; if (pr) { addText(clone(pr[1])); if (isMobile()) setTab('edit'); } },

@@ -229,23 +229,6 @@ function insertCard(T, d, card) {
   if (body) S.p.clips.push(mkText({ brand: 'ins', trackId: t2.id, start: T + 0.4, dur: d - 0.4, text: body, size: 52, weight: 500, y: tall ? 0.06 : 0.12, anim: 'slide' }));
   return true;
 }
-// Numbered contact sheets of the whole video, so Claude sees it from start to end and can read
-// captions or on-screen text that are already part of the footage.
-async function contactSheets(lim, onProg) {
-  pause(); const was = S.t, sel = S.sel, D = projDur(), tall = S.p.h > S.p.w, cols = tall ? 4 : 3, rows = tall ? 3 : 4, per = cols * rows;
-  const N = Math.min(lim.maxCount * per, Math.max(per, Math.ceil(D / 1.0))), cw = tall ? 320 : 440, ch = Math.round(cw * S.p.h / S.p.w), times = [], sheets = [];
-  S.sel = null; let sc = null, x = null;
-  const flush = async () => { if (!sc) return; let q = 0.82, b = null; for (let i = 0; i < 4; i++) { b = await new Promise(r => sc.toBlob(r, 'image/jpeg', q)); if (!b || !lim.maxBytes || b.size <= lim.maxBytes) break; q -= 0.18; } if (b) sheets.push(b); sc = null; };
-  for (let i = 0; i < N; i++) {
-    if (i % per === 0) { await flush(); sc = document.createElement('canvas'); sc.width = cols * cw; sc.height = rows * ch; x = sc.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, sc.width, sc.height); }
-    const t = D * (i + 0.5) / N; times.push(+t.toFixed(1));
-    S.t = t; syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false;
-    const k = i % per, px = (k % cols) * cw, py = Math.floor(k / cols) * ch; x.drawImage(cv, px, py, cw, ch);
-    x.fillStyle = '#000'; x.fillRect(px, py, 46, 26); x.fillStyle = '#FFD23F'; x.font = '700 18px sans-serif'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillText(String(i + 1), px + 23, py + 14);
-    if (onProg) onProg((i + 1) / N);
-  }
-  await flush(); S.sel = sel; seek(was); return { sheets, times };
-}
 function askBrief() {
   return new Promise(res => {
     modal(`<h3>על מה הסרטון?</h3><p class="hint">במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון עצמו לא מצאתי כתוביות או טקסט שמסבירים את הנושא. משפט אחד מספיק, ואת כל השאר העורך עושה לבד.</p>
@@ -280,6 +263,99 @@ Reply with only JSON: {"understood": boolean, "burned": boolean, "title": string
 }
 // the top band: above a speaker's face, and far from captions near the bottom
 const TOPY = () => S.p.fmt === '9:16' ? -0.33 : S.p.h > S.p.w ? -0.36 : S.p.h === S.p.w ? -0.36 : -0.34;
+// Numbered contact sheets of chosen moments, so Claude can see the video and read text that is part of it.
+async function sheetsAt(times, lim, onProg, first, big) {
+  // big: a few frames shown large, for judging how something looks rather than reading along
+  pause(); const was = S.t, sel = S.sel, tall = S.p.h > S.p.w, cols = big ? 2 : tall ? 4 : 3, rows = big ? (tall ? 1 : 2) : tall ? 3 : 4, per = cols * rows;
+  const cw = big ? (tall ? 540 : 640) : tall ? 320 : 440, ch = Math.round(cw * S.p.h / S.p.w), sheets = []; S.sel = null; let sc = null, x = null;
+  const flush = async () => { if (!sc) return; let q = 0.82, b = null; for (let i = 0; i < 4; i++) { b = await new Promise(r => sc.toBlob(r, 'image/jpeg', q)); if (!b || !lim.maxBytes || b.size <= lim.maxBytes) break; q -= 0.18; } if (b) sheets.push(b); sc = null; };
+  for (let i = 0; i < times.length; i++) {
+    if (i % per === 0) { await flush(); sc = document.createElement('canvas'); sc.width = cols * cw; sc.height = rows * ch; x = sc.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, sc.width, sc.height); }
+    S.t = times[i]; syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false;
+    const k = i % per, px = (k % cols) * cw, py = Math.floor(k / cols) * ch; x.drawImage(cv, px, py, cw, ch);
+    x.fillStyle = '#000'; x.fillRect(px, py, 46, 26); x.fillStyle = '#FFD23F'; x.font = '700 18px sans-serif'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillText(String((first || 0) + i + 1), px + 23, py + 14);
+    if (onProg) onProg((i + 1) / times.length);
+  }
+  await flush(); S.sel = sel; seek(was); return { sheets, times, per };
+}
+const spread = (D, n) => { const t = []; for (let i = 0; i < n; i++) t.push(+(D * (i + 0.5) / n).toFixed(1)); return t; };
+const imgLimits = async () => { try { const l = await AI.limits(); return l && l.images && l.images.maxCount ? { maxCount: Math.min(4, l.images.maxCount), maxBytes: l.images.maxBytes } : null; } catch (e) { return null; } };
+
+// Read captions that are already part of the footage, start to end, in batches: a long video is read
+// in several passes instead of being thinned out. Resolves { burned, lines:[{t, text}] }.
+const READ_CALLS = 8;
+async function readBurned(lim, onProg) {
+  const D = projDur(), perCall = lim.maxCount * (S.p.h > S.p.w ? 12 : 12), step = Math.max(1, D / (READ_CALLS * perCall)), all = [];
+  for (let t = step / 2; t < D; t += step) all.push(+t.toFixed(1));
+  const lines = []; let burned = false;
+  for (let i = 0, call = 0; i < all.length; i += perCall, call++) {
+    const times = all.slice(i, i + perCall), vis = await sheetsAt(times, lim, u => onProg && onProg((i + u * times.length * 0.5) / all.length), i);
+    let r = null;
+    try {
+      r = await AI.json(`Attached: ${vis.sheets.length} contact sheet(s) with ${times.length} numbered frames of one video, in time order (frames ${i + 1} to ${i + times.length}).
+Your only job is to read captions or subtitles that are part of the picture itself, typically one or two lines of text near the bottom or middle of each frame that change as the speaker talks. Ignore logos, watermarks, clocks and interface elements.
+For each frame that shows caption text, copy that text exactly as written, in its own language. Do not translate, complete, correct or guess words you cannot read.
+Reply with only JSON: {"burned": boolean, "lines": [{"n": frameNumber, "text": string}]}. "burned" is true only if at least a few frames carry such captions. If there are none, reply {"burned": false, "lines": []}.`, { images: vis.sheets, cache: false });
+    } catch (e) { if (e && e.code === 'not_granted') { AI = null; return { burned: false, lines: [] }; } r = null; }
+    if (onProg) onProg(Math.min(1, (i + times.length) / all.length));
+    const got = r && Array.isArray(r.lines) ? r.lines : [];
+    got.forEach(l => { const n = Math.round(+l.n) - 1, text = String(l.text || '').replace(/\s+/g, ' ').trim(), last = lines[lines.length - 1]; if (!text || n < i || n >= i + times.length) return; if (last && (last.text === text || last.text.endsWith(text))) return; lines.push({ t: all[n], text }); });
+    if (r && r.burned && got.length) burned = true;
+    // the first pass also answers whether there are captions at all; without them there is nothing to read further
+    if (call === 0 && !burned) return { burned: false, lines: [] };
+  }
+  return { burned: burned && lines.length > 1, lines };
+}
+
+/* Checks before the result is handed over. First the facts that can be tested exactly, then one look
+   by Claude at the frames where something was added. Whatever fails is corrected or removed, and reported. */
+function checkFacts(vids, burned) {
+  const fixed = [], ok = [];
+  // 1. footage untouched: one whole clip per uploaded file, in order, nothing trimmed, moved or zoomed
+  let pos = 0, intact = true;
+  vids.forEach(m => {
+    const cs = S.p.clips.filter(c => c.type === 'video' && c.mediaId === m.id);
+    const good = cs.length === 1 && Math.abs(cs[0].in) < 0.01 && Math.abs(cs[0].dur - m.duration) < 0.06 && Math.abs(cs[0].start - pos) < 0.06 && cs[0].speed === 1 && cs[0].scale === 1 && !cs[0].x && !cs[0].y && !(cs[0].kf || []).length;
+    if (!good) { intact = false; const tid = cs[0] ? cs[0].trackId : firstTrack('video', true).id; S.p.clips = S.p.clips.filter(c => !(c.type === 'video' && c.mediaId === m.id)); S.p.clips.push(mkClip({ type: 'video', mediaId: m.id, trackId: tid, start: pos, dur: m.duration })); }
+    pos += m.duration;
+  });
+  intact ? ok.push('הצילום שלם: לא נחתך, לא הוזז ולא הוגדל') : fixed.push('הצילום שוחזר למצבו המקורי, בלי חיתוכים');
+  // 2. no captions on top of captions
+  const caps = S.p.clips.filter(c => c.type === 'caption');
+  if (burned && caps.length) { S.p.clips = S.p.clips.filter(c => c.type !== 'caption'); fixed.push('הוסרו כתוביות שנוספו מעל הכתוביות שכבר בסרטון'); }
+  else if (burned) ok.push('בסרטון כבר יש כתוביות, ולא נוספו עוד');
+  // 3. every added text fits on two lines and stays inside the footage
+  let shrunk = 0, dropped = 0; const D = pos;
+  S.p.clips.filter(c => c.brand === 'hook' || c.brand === 'point').sort((a, b) => a.start - b.start).forEach((c, i, arr) => {
+    const fits = () => { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.font = `${c.weight} ${c.size * Math.min(S.p.w, S.p.h) / 1080}px "${c.font}", sans-serif`; const n = wrapLines(c.text, S.p.w * 0.86).length; ctx.restore(); return n <= 2; };
+    let g = 0; while (!fits() && c.size > 40 && g++ < 12) { c.size -= 4; shrunk = 1; }
+    const prev = arr[i - 1];
+    if (!fits() || c.start >= D - 1 || (prev && !prev._drop && c.start < prev.start + prev.dur + 0.3)) { c._drop = true; dropped++; }
+    else if (c.start + c.dur > D) c.dur = D - c.start;
+  });
+  S.p.clips = S.p.clips.filter(c => !c._drop);
+  if (shrunk) fixed.push('טקסט ארוך הוקטן כדי שייכנס בשתי שורות');
+  if (dropped) fixed.push(dropped + ' טקסטים הוסרו כי לא נכנסו למסך או התנגשו זה בזה');
+  if (!shrunk && !dropped && S.p.clips.some(c => c.brand === 'hook' || c.brand === 'point')) ok.push('כל הטקסטים שנוספו נכנסים למסך ולא מתנגשים');
+  return { ok, fixed };
+}
+async function checkLook(lim, burned) {
+  const added = S.p.clips.filter(c => c.brand === 'hook' || c.brand === 'point').sort((a, b) => a.start - b.start); if (!AI || !lim || !added.length) return null;
+  const card = S.p.clips.find(c => c.brand === 'card'), times = added.map(c => +(c.start + Math.min(1.2, c.dur * 0.6)).toFixed(2)); if (card) times.push(+(card.start + card.dur * 0.7).toFixed(2));
+  const vis = await sheetsAt(times, lim, null, 0, true); let r = null;
+  try {
+    r = await AI.json(`You are doing the final quality check of a short video before it is handed to its creator. Attached: ${times.length} numbered frames from the finished video.
+Frames 1 to ${added.length} each show one text the editor added near the TOP of the picture: ${added.map((c, i) => (i + 1) + ' = "' + c.text + '" (' + (c.brand === 'hook' ? 'gold title' : 'label in a colored box') + ')').join('; ')}.${card ? ' Frame ' + times.length + ' is the closing card with the logo.' : ''}
+${burned ? 'The footage already carries its own captions lower in the picture; those are fine and must stay.' : ''}
+For each of frames 1 to ${added.length}, decide whether the ADDED text has a real defect: it covers the speaker's eyes or mouth, it overlaps other text so either becomes hard to read, it is cut off at the edge, or it repeats word for word a caption visible in the same frame. Small imperfections are not defects. Do not judge the footage itself.
+Reply with only JSON: {"frames": [{"n": number, "defect": boolean, "why": string}]} with one entry per frame 1 to ${added.length}; "why" is a few words in Hebrew, empty when there is no defect.`, { images: vis.sheets, cache: false });
+  } catch (e) { if (e && e.code === 'not_granted') AI = null; return null; }
+  if (!r || !Array.isArray(r.frames)) return null;
+  const bad = r.frames.filter(f => f && f.defect && added[Math.round(+f.n) - 1]).map(f => ({ c: added[Math.round(+f.n) - 1], why: String(f.why || '').trim() }));
+  bad.forEach(b => { S.p.clips = S.p.clips.filter(c => c !== b.c); });
+  return { checked: added.length, removed: bad.map(b => '"' + b.c.text + '"' + (b.why ? ': ' + b.why : '')) };
+}
+
 async function autoEdit(mediaIds) {
   if (autoBusy) return;
   // always rebuild from the raw footage, so a second pass replaces the first instead of stacking on it
@@ -290,62 +366,78 @@ async function autoEdit(mediaIds) {
   try {
     const name = mediaIds ? vids[0].name.replace(/\.[^.]+$/, '').slice(0, 60) : S.p.name;
     S.p = newProject(); S.p.name = name || 'סרטון חדש'; S.sel = null; setCanvas(); srcs.forEach(m => addMedia(m)); setTab('media');
-    // 1. listen
-    autoProgress('מקשיב לסרטון. זה לוקח בערך כאורך הסרטון');
-    const heard = new Map(); let n = 0;
-    for (const m of vids) { const segs = await transcribe(m, u => autoBar(4 + 40 * (n + u) / vids.length)); if (segs) heard.set(m.id, segs); n++; }
-    if (!$('#autoBar')) autoProgress('קלוד צופה בסרטון');
-    autoBar(46); { const sk = $('#autoNoListen'); if (sk) sk.remove(); }
-    // The footage itself is never cut or re-framed here. Trimming a finished clip by its sound level
-    // chops words and makes playback stutter; silence removal stays a manual tool on the timeline.
-    // 3. captions from what was heard
-    let caps = 0; heard.forEach((segs, id) => { caps += addCaptions(id, segs); });
-    if (caps) { S.p.cap.style = 'karaoke'; S.p.cap.size = S.p.fmt === '16:9' ? 54 : 62; done.push('כתוביות צרובות לפי הדיבור (' + caps + ')'); }
-    S.sel = null; refresh(); autoBar(55);
-    // 4. understand and plan
-    const lines = []; heard.forEach((segs, id) => segs.forEach(sg => { const t = srcToTl(id, sg.a); lines.push({ t: t == null ? (srcToTl(id, sg.b - 0.05) || 0) : t, text: sg.text }); })); lines.sort((a, b) => a.t - b.t);
+    // a new upload replaces the old footage: files no longer on the timeline are released, so storage does not fill up
+    if (mediaIds) [...S.media.values()].filter(m => !m.builtin && m.kind !== 'image' && !ids.includes(m.id)).forEach(m => { S.media.delete(m.id); DB.delMedia(m.id); try { URL.revokeObjectURL(m.url); } catch (e) { } });
+    autoProgress('בודק אם בסרטון כבר יש כתוביות'); { const sk = $('#autoNoListen'); if (sk) sk.hidden = true; }
+    const lim = AI ? await imgLimits() : null;
+    // 1. captions that are already in the footage are read, never added again
+    let burned = false, lines = [];
+    if (AI && lim) { const r = await readBurned(lim, u => { autoBar(4 + 36 * u); if (u > 0.2) autoStep('קורא את הכתוביות שבסרטון'); }); burned = r.burned; lines = r.lines; }
+    // 2. otherwise listen, where this browser can, and add captions from the speech
+    let caps = 0;
+    if (!burned) {
+      autoStep('מקשיב לסרטון. זה לוקח בערך כאורך הסרטון'); { const sk = $('#autoNoListen'); if (sk) sk.hidden = false; }
+      const heard = new Map(); let n = 0;
+      for (const m of vids) { const segs = await transcribe(m, u => autoBar(40 + 15 * (n + u) / vids.length)); if (segs) heard.set(m.id, segs); n++; }
+      if (!$('#autoBar')) autoProgress('קלוד מתכנן את העריכה');
+      heard.forEach((segs, id) => { caps += addCaptions(id, segs); });
+      if (caps) { S.p.cap.style = 'karaoke'; S.p.cap.size = S.p.fmt === '16:9' ? 54 : 62; done.push('כתוביות לפי הדיבור (' + caps + ')'); }
+      lines = []; heard.forEach((segs, id) => segs.forEach(sg => { const t = srcToTl(id, sg.a); lines.push({ t: t == null ? (srcToTl(id, sg.b - 0.05) || 0) : t, text: sg.text }); })); lines.sort((a, b) => a.t - b.t);
+    } else done.push('קראתי את הכתוביות שכבר נמצאות בסרטון (' + lines.length + ' שורות), ולא הוספתי כתוביות נוספות');
+    { const sk = $('#autoNoListen'); if (sk) sk.remove(); }
+    S.sel = null; refresh(); autoBar(56);
+    // 3. understand and plan
     let plan = null, brief = '';
     if (AI) {
-      autoStep('קלוד צופה בסרטון ומתכנן את העריכה');
-      let frames = null; try { const lim = await AI.limits(); if (lim && lim.images && lim.images.maxCount) { const hold = S.p.clips; S.p.clips = hold.filter(c => c.type !== 'caption'); try { frames = await contactSheets({ maxCount: Math.min(4, lim.images.maxCount), maxBytes: lim.images.maxBytes }, u => autoBar(55 + 10 * u)); } finally { S.p.clips = hold; } } } catch (e) { frames = null; }
-      autoBar(65); autoStep('קלוד מתכנן את העריכה');
+      autoStep('קלוד מתכנן את העריכה');
       try {
-        plan = await planEdit(lines, '', frames);
-        if (!lines.length && !(plan && plan.understood && String(plan.hook || '').trim())) {
-          brief = await askBrief(); autoProgress('קלוד מתכנן את העריכה'); autoBar(70);
-          plan = brief ? await planEdit(lines, brief, frames) : null;
+        if (lines.length) plan = await planEdit(lines, '', null);
+        else {
+          let vis = null; if (lim) { const hold = S.p.clips; S.p.clips = hold.filter(c => c.type !== 'caption'); try { vis = await sheetsAt(spread(projDur(), Math.min(lim.maxCount * 12, Math.max(12, Math.ceil(projDur())))), lim, u => autoBar(56 + 8 * u)); } finally { S.p.clips = hold; } }
+          plan = await planEdit(lines, '', vis);
+          if (!(plan && plan.understood && String(plan.hook || '').trim())) { brief = await askBrief(); autoProgress('קלוד מתכנן את העריכה'); autoBar(68); plan = brief ? await planEdit(lines, brief, vis) : null; }
         }
       } catch (e) { if (e && e.code === 'not_granted') AI = null; plan = null; }
     }
-    autoBar(85); autoStep('מרכיב את הסרטון');
-    // 5. build
-    const burned = !!(plan && plan.burned);
-    if (burned) { if (caps) { S.p.clips = S.p.clips.filter(c => !(c.type === 'caption' && c.auto)); const i = done.findIndex(t => t.startsWith('כתוביות צרובות')); if (i >= 0) done.splice(i, 1); } done.push('קראתי את הכתוביות שכבר נמצאות בסרטון, והעריכה נבנתה לפיהן'); }
+    autoBar(80); autoStep('מרכיב את הסרטון');
+    // 4. build: titles go in the top band; the footage is left exactly as uploaded
     if (plan) {
       const D = projDur(), tall = S.p.h > S.p.w, hook = String(plan.hook || '').trim().slice(0, 80);
-      if (hook) { S.p.clips.push(mkText({ brand: 'hook', trackId: firstTrack('text').id, start: 0, dur: Math.min(3, D), text: hook, size: tall ? 80 : 84, color: BRAND.gold, stroke: true, y: TOPY(), anim: 'pop' })); done.push('כותרת פתיחה: ' + hook); }
-      let last = -9, np = 0;
+      if (hook) S.p.clips.push(mkText({ brand: 'hook', trackId: firstTrack('text').id, start: 0, dur: Math.min(3, D), text: hook, size: tall ? 80 : 84, color: BRAND.gold, stroke: true, y: TOPY(), anim: 'pop' }));
+      let last = -9;
       (Array.isArray(plan.points) ? plan.points : []).map(p => ({ at: +p.at, text: String(p.text || '').trim() })).filter(p => p.text && p.at >= 3.6 && p.at < D - 2).sort((a, b) => a.at - b.at).slice(0, 3).forEach(p => {
-        if (p.at - last < 6) return; last = p.at; np++;
+        if (p.at - last < 6) return; last = p.at;
         S.p.clips.push(mkText({ brand: 'point', trackId: firstTrack('text').id, start: +p.at.toFixed(2), dur: Math.min(3.2, D - p.at), text: p.text.slice(0, 60), size: 54, weight: 700, bgOn: true, bg: S.brand.color !== BRAND.deep ? S.brand.color : BRAND.blue, shadow: false, y: TOPY(), anim: 'fade' }));
       });
-      if (np) done.push(np + ' נקודות מפתח בראש המסך, בזמן שהן נאמרות');
       if (String(plan.title || '').trim()) S.p.name = String(plan.title).trim().slice(0, 60);
-      if (String(plan.post || '').trim()) { aiPost = String(plan.post); done.push('פוסט נלווה ללינקדאין, מחכה בלשונית במאי'); }
+      if (String(plan.post || '').trim()) aiPost = String(plan.post);
     }
+    // 5. check before handing over
+    autoBar(86); autoStep('בודק את התוצאה לפני סיום');
+    const facts = checkFacts(vids, burned);
+    let look = null; if (lim) { try { look = await checkLook(lim, burned); } catch (e) { look = null; } }
+    autoBar(96);
+    // closing card and logo go in after the checks, on the verified footage length
     addOutro(); addBug();
     { const bug = S.p.clips.find(c => c.brand === 'bug'), hk = S.p.clips.find(c => c.brand === 'hook'); if (bug && hk && bug.dur > hk.dur + 1) { bug.start = hk.dur; bug.dur -= hk.dur; bug.tin = 'fade'; } }
     const cta = plan && String(plan.cta || '').trim().slice(0, 30), cc = S.p.clips.find(c => c.brand === 'cta'); if (cta && cc) { cc.text = cta; cc.autoCta = false; }
-    done.push('תג לוגו בפינה'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
     const lastV = S.p.clips.filter(c => c.type === 'video').sort((a, b) => b.start - a.start)[0]; if (lastV) { lastV.tout = 'fade'; lastV.fadeOut = Math.min(0.4, lastV.dur / 2); }
+    // what stands in the finished video, counted after the checks
+    const hk = S.p.clips.find(c => c.brand === 'hook'), np = S.p.clips.filter(c => c.brand === 'point').length;
+    if (hk) done.push('כותרת פתיחה: ' + hk.text); if (np) done.push(np + ' נקודות מפתח בראש המסך, בזמן שהן נאמרות');
+    if (aiPost && plan) done.push('פוסט נלווה ללינקדאין, מחכה בלשונית במאי');
+    done.push('תג לוגו בפינה'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
+    const checks = facts.ok.slice(), fixes = facts.fixed.slice();
+    if (look) { look.removed.length ? fixes.push('קלוד בדק את הטקסטים על המסך והסיר: ' + look.removed.join(' | ')) : checks.push('קלוד בדק ' + look.checked + ' טקסטים על המסך: קריאים ולא מסתירים את הפנים'); }
+    else if (S.p.clips.some(c => c.brand === 'hook' || c.brand === 'point')) skipped.push('בדיקת המראה על ידי קלוד לא רצה הפעם, ולכן כדאי להציץ בטקסטים שנוספו');
     // what could not be done, said plainly
-    if (!caps && !burned) skipped.push(vids.some(m => m.duration > LISTEN_MAX) ? 'כתוביות: הסרטון ארוך מארבע דקות, ולכן לא הקשבתי לו' : 'כתוביות: במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון אין כתוביות לקרוא');
-    if (!plan) skipped.push(AI ? (brief || lines.length ? 'תכנון העריכה לא הצליח הפעם. אפשר להריץ שוב' : 'כותרת, נקודות מפתח ושקפי ביניים: לא נוספו, כי הנושא לא ידוע ולא רציתי לנחש') : 'כותרת, נקודות מפתח ושקפי ביניים: נכתבים רק כשהעורך פתוח בתוך קלוד');
-    else if (!lines.length && !burned) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור, כי לא הצלחתי לשמוע אותו. כדאי לעבור עליהם');
+    if (!caps && !burned) skipped.push(vids.some(m => m.duration > LISTEN_MAX) ? 'כתוביות: בסרטון אין כתוביות, והוא ארוך מארבע דקות, ולכן לא הקשבתי לו' : 'כתוביות: בסרטון אין כתוביות לקרוא, ובמכשיר הזה אי אפשר לשמוע את הדיבור');
+    if (!plan) skipped.push(AI ? (brief || lines.length ? 'תכנון העריכה לא הצליח הפעם. אפשר להריץ שוב' : 'כותרת ונקודות מפתח: לא נוספו, כי הנושא לא ידוע ולא רציתי לנחש') : 'כותרת ונקודות מפתח: נכתבות רק כשהעורך פתוח בתוך קלוד');
+    else if (!lines.length) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור. כדאי לעבור עליהם');
     autoBar(100); S.sel = null; commit(); seek(0); renderPanel();
+    const sec = (t, a, cls) => a.length ? `<h4>${t}</h4><div class="col">${a.map(x => `<div class="crit"><p${cls ? ' class="fx"' : ''}>${esc(x)}</p></div>`).join('')}</div>` : '';
     modal(`<h3>הסרטון מוכן</h3><p class="hint">${esc(S.p.name)} · אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
-    <h4>מה נעשה</h4><div class="col">${done.map(t => `<div class="crit"><p>${esc(t)}</p></div>`).join('')}</div>
-    ${skipped.length ? `<h4>מה לא נעשה</h4><div class="col">${skipped.map(t => `<div class="crit"><p class="fx">${esc(t)}</p></div>`).join('')}</div>` : ''}
+    ${sec('מה נעשה', done)}${sec('נבדק לפני סיום', checks)}${sec('תוקן בבדיקה', fixes, 1)}${sec('מה לא נעשה', skipped, 1)}
     <div class="rowf" style="margin-top:12px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>`);
   } catch (e) { closeModal(); commit(); toast('העריכה האוטומטית נעצרה באמצע. אפשר לחזור אחורה עם בטל.'); }
   autoBusy = false;

@@ -101,7 +101,9 @@ let decodeCtx = null;
 function loadMeta(el, ev) { return new Promise((res, rej) => { el.addEventListener(ev, () => res(), { once: true }); el.addEventListener('error', () => rej(new Error('load')), { once: true }); }); }
 async function computePeaks(blob) {
   try {
-    if (blob.size > 150e6) return null;
+    // The waveform is decoration. Decoding needs the whole file in memory, several times its size once
+    // decoded, which can crash a phone on a long recording, so large files simply go without one.
+    if (blob.size > (matchMedia('(max-width: 860px)').matches ? 25e6 : 80e6)) return null;
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
     decodeCtx = decodeCtx || new AC();
     const buf = await new Promise(async (res, rej) => { try { decodeCtx.decodeAudioData(await blob.arrayBuffer(), res, rej); } catch (e) { rej(e); } });
@@ -186,7 +188,7 @@ function ensureAudio() {
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); EL.forEach(hook); }
 }
 // Each (file, track) pair gets two elements. A clip that continues its predecessor in the source keeps the
-// same one, so a plain split plays through with no seek. A jump cut (silence removed, a trimmed take) moves to
+// same one, so a plain split plays through with no seek. A jump cut (a trimmed take, a reordered clip) moves to
 // the other one, which was parked on the new position in advance, so the cut is instant and stays in sync.
 const isTimed = c => c.type === 'video' || c.type === 'audio';
 const SLOT = new Map();
