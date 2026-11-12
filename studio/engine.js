@@ -177,36 +177,47 @@ function ensureAudio() {
   if (!AC) { try { const A = window.AudioContext || window.webkitAudioContext; AC = new A(); MASTER = AC.createGain(); MASTER.connect(AC.destination); } catch (e) { AC = null; } }
   if (AC) { if (AC.state === 'suspended') AC.resume().catch(() => { }); EL.forEach(hook); }
 }
+const elKey = c => c.mediaId + '|' + c.trackId;
 function getEl(c) {
-  let e = EL.get(c.id);
+  const k = elKey(c); let e = EL.get(k);
   if (!e) {
     const m = S.media.get(c.mediaId); if (!m || m.kind === 'image') return null;
     const el = document.createElement(m.kind === 'video' ? 'video' : 'audio');
     el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', ''); el.src = m.url;
     el.addEventListener('seeked', requestDraw); el.addEventListener('loadeddata', requestDraw);
-    e = { el, gain: null, unlocked: false }; EL.set(c.id, e); if (AC) hook(e);
+    e = { el, gain: null, unlocked: false }; EL.set(k, e); if (AC) hook(e);
   }
   return e;
 }
-function pruneEls() { const ids = new Set(S.p.clips.map(c => c.id)); EL.forEach((e, id) => { if (!ids.has(id)) { try { e.el.pause(); e.el.removeAttribute('src'); e.el.load(); if (e.gain) e.gain.disconnect(); } catch (x) { } EL.delete(id); } }); }
+const isTimed = c => c.type === 'video' || c.type === 'audio';
+function pruneEls() {
+  const keys = new Set(S.p.clips.filter(isTimed).map(elKey));
+  EL.forEach((e, k) => { if (!keys.has(k)) { try { e.el.pause(); e.el.removeAttribute('src'); e.el.load(); if (e.gain) e.gain.disconnect(); } catch (x) { } EL.delete(k); } });
+}
+function setGain(e, g) { if (e.gain) { e.gain.gain.value = g; e.el.muted = false; } else { try { e.el.volume = clamp(g, 0, 1); } catch (x) { } e.el.muted = g === 0; } }
+// Clips on one track never overlap, so each (file, track) pair shares a single element:
+// a plain split plays through with no seek, and a long cut-up clip does not open dozens of decoders.
 function syncMedia() {
-  const t = S.t;
+  const t = S.t, act = new Map(), next = new Map();
   for (const c of S.p.clips) {
-    if (c.type !== 'video' && c.type !== 'audio') continue;
-    const e = getEl(c); if (!e) continue; const el = e.el, l = t - c.start, tr = trackById(c.trackId) || {};
-    const active = l >= 0 && l < c.dur;
-    let g = 0;
-    if (active && !c.mute && !tr.muted) {
+    if (!isTimed(c)) continue; const k = elKey(c), l = t - c.start;
+    if (l >= 0 && l < c.dur) act.set(k, c); else if (l < 0) { const n = next.get(k); if (!n || c.start < n.start) next.set(k, c); }
+    if (!EL.has(k)) getEl(c);
+  }
+  EL.forEach((e, k) => {
+    const el = e.el, c = act.get(k);
+    if (!c) {
+      setGain(e, 0); if (!el.paused) el.pause();
+      const n = next.get(k); if (n && n.start - t < 1.2 && el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - n.in) > 0.05) el.currentTime = n.in;
+      return;
+    }
+    const l = t - c.start, tr = trackById(c.trackId) || {}; let g = 0;
+    if (!c.mute && !tr.muted) {
       g = c.volume;
       if (c.fadeIn > 0 && l < c.fadeIn) g *= l / c.fadeIn;
       if (c.fadeOut > 0 && c.dur - l < c.fadeOut) g *= (c.dur - l) / c.fadeOut;
     }
-    if (e.gain) { e.gain.gain.value = g; el.muted = false; } else { try { el.volume = clamp(g, 0, 1); } catch (x) { } el.muted = g === 0; }
-    if (!active) {
-      if (!el.paused) el.pause();
-      if (l < 0 && l > -1.2 && Math.abs(el.currentTime - c.in) > 0.05 && el.readyState >= 1) el.currentTime = c.in;
-      continue;
-    }
+    setGain(e, g);
     const want = c.in + l * c.speed;
     if (el.playbackRate !== c.speed) el.playbackRate = c.speed;
     if (S.playing) {
@@ -216,7 +227,7 @@ function syncMedia() {
       if (!el.paused) el.pause();
       if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 0.03 && !el.seeking) el.currentTime = want;
     }
-  }
+  });
 }
 
 /* ===== compositor ===== */
@@ -375,7 +386,8 @@ function loop(ts) {
 function play() {
   ensureAudio();
   if (S.t >= projDur() - 0.05) S.t = 0;
-  for (const c of S.p.clips) if (c.type === 'video' || c.type === 'audio') { const e = getEl(c); if (e && !e.unlocked) { e.unlocked = true; if (e.gain) e.gain.gain.value = 0; else e.el.muted = true; const pr = e.el.play(); if (pr) pr.catch(() => { }); } }
+  for (const c of S.p.clips) if (isTimed(c)) getEl(c);
+  EL.forEach(e => { if (!e.unlocked) { e.unlocked = true; setGain(e, 0); const pr = e.el.play(); if (pr) pr.catch(() => { }); } });
   S.playing = true; lastTs = 0; uiPlay();
 }
 function pause() { S.playing = false; uiPlay(); requestDraw(); }
@@ -393,7 +405,7 @@ async function startExport(quality) {
   pause(); ensureAudio();
   const scale = quality === '720' ? 720 / Math.min(S.p.w, S.p.h) : 1;
   S.exporting = true; EXP.cancel = false; EXP.blob = null; EXP.chunks = []; EXP.mime = mime;
-  setCanvas(scale); S.sel = S.sel; seek(0); syncMedia(); draw();
+  setCanvas(scale); seek(0); syncMedia(); draw();
   await new Promise(r => setTimeout(r, 700));
   const stream = cv.captureStream(S.p.fps);
   if (AC) { EXP.dest = AC.createMediaStreamDestination(); MASTER.connect(EXP.dest); EXP.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t)); }
@@ -409,3 +421,18 @@ async function startExport(quality) {
 }
 function finishExport() { setTimeout(() => { if (EXP.rec && EXP.rec.state !== 'inactive') EXP.rec.stop(); }, 250); }
 function cancelExport() { EXP.cancel = true; pause(); if (EXP.rec && EXP.rec.state !== 'inactive') EXP.rec.stop(); else { S.exporting = false; setCanvas(); } }
+
+document.addEventListener('visibilitychange', () => {
+  const r = EXP.rec; if (!S.exporting || !r) return;
+  try {
+    if (document.hidden && r.state === 'recording') { r.pause(); S.playing = false; syncMedia(); }
+    else if (!document.hidden && r.state === 'paused') { r.resume(); S.playing = true; lastTs = 0; }
+  } catch (e) { }
+});
+function normalizeProject(p) {
+  const d = newProject(); p.cap = Object.assign(d.cap, p.cap || {});
+  if (!FORMATS[p.fmt]) p.fmt = '16:9'; p.w = FORMATS[p.fmt][0]; p.h = FORMATS[p.fmt][1]; p.fps = p.fps || 30; p.name = p.name || 'סרטון חדש';
+  const ids = new Set(p.tracks.map(t => t.id));
+  p.clips = p.clips.filter(c => c && ids.has(c.trackId) && c.dur > 0).map(c => Object.assign(c.type === 'text' ? mkText({}) : mkClip({}), c));
+  return p;
+}

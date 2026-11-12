@@ -111,8 +111,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
 .ruler{height:26px;position:relative;border-bottom:1px solid var(--line);cursor:ew-resize;touch-action:none;background:var(--panel)}
 .tick{position:absolute;top:0;bottom:0;border-left:1px solid #ffffff22;padding-left:4px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;line-height:24px;pointer-events:none}
 .row{height:48px;position:relative;border-bottom:1px solid #ffffff0d;background:linear-gradient(#ffffff05,#ffffff05)}
-.clip{position:absolute;top:4px;bottom:4px;border-radius:7px;overflow:hidden;background:#1C3FB8 left/auto 100% repeat-x;border:1.5px solid #ffffff30;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
-.clip.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.clip{position:absolute;top:4px;bottom:4px;border-radius:7px;overflow:hidden;background:#1C3FB8 left/auto 100% repeat-x;border:1.5px solid #ffffff30;touch-action:pan-x;cursor:grab;user-select:none;-webkit-user-select:none}
+.clip.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);touch-action:none}
 .clip.k-audio{background:#0F6B5B}
 .clip.k-text{background:#B8862B}
 .clip.k-caption{background:#5A3FC4}

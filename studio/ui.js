@@ -98,6 +98,7 @@ scroller.addEventListener('pointerdown', e => {
   if (S.sel !== c.id) {
     S.sel = c.id; $$('.clip.sel').forEach(x => x.classList.remove('sel')); cel.classList.add('sel'); renderInspector(); requestDraw();
     if (document.body.dataset.tab === 'cap') renderPanel();
+    if (e.pointerType === 'touch') { if (isMobile()) setTab('edit'); return; }
   }
   drag = { mode: tg.classList.contains('hd') ? (tg.classList.contains('l') ? 'tl' : 'tr') : 'move', c, cel, x0: e.clientX, s0: c.start, d0: c.dur, in0: c.in, kf0: clone(c.kf || []), moved: false };
   scroller.setPointerCapture(e.pointerId); e.preventDefault();
@@ -264,16 +265,6 @@ const PANELS = {
       <button type="button" class="btn" data-a="addPreset" data-v="cta">כפתור קריאה לפעולה</button></div>
     <h4>צבעי המותג</h4><div class="sw">${Object.values(BRAND).map(v => `<button type="button" data-a="swatch" data-v="${v}" style="background:${v}" aria-label="${v}"></button>`).join('')}</div>
     <p class="hint">לחיצה על צבע צובעת את הטקסט הנבחר.</p>`;
-  },
-  ai() {
-    if (!AI) return `<h4>עוזר התוכן</h4><p class="hint">העוזר פעיל כשהעורך פתוח בתוך קלוד. אם הוא לא נטען, רענני את העמוד.</p>`;
-    return `<h4>עוזר התוכן</h4><textarea id="aiTopic" rows="3" placeholder="על מה הסרטון? אפשר להדביק תסריט או להשאיר ריק כדי להשתמש בכתוביות."></textarea>
-    <div class="col"><button type="button" class="btn" data-a="aiHook"${aiBusy ? ' disabled' : ''}>שלוש הצעות להוק פתיחה</button>
-    <button type="button" class="btn" data-a="aiPost"${aiBusy ? ' disabled' : ''}>טקסט לפוסט שמלווה את הסרטון</button>
-    <button type="button" class="btn" data-a="aiTrans"${aiBusy ? ' disabled' : ''}>תרגום הכתוביות לאנגלית</button></div>
-    ${aiBusy ? '<p class="hint">קלוד כותב...</p>' : ''}
-    ${aiHooks.length ? '<h4>לחיצה מוסיפה כהוק בתחילת הסרטון</h4><div class="col">' + aiHooks.map((t, i) => `<button type="button" class="btn" data-a="aiUseHook" data-v="${i}">${esc(t)}</button>`).join('') + '</div>' : ''}
-    ${aiOut ? `<h4>תוצאה</h4><div class="aiout" id="aiOutBox">${esc(aiOut)}</div><button type="button" class="btn sm" data-a="aiCopy" style="margin-top:8px">העתקה</button>` : ''}`;
   }
 };
 var renderPanel = function () {
@@ -404,9 +395,10 @@ const ACT = {
     const t = S.t; let n = 0;
     for (const c of [...S.p.clips]) {
       const cut = t - c.start; if (cut < 0.05 || cut > c.dur - 0.05) continue; n++;
-      const r = clone(c); r.id = uid(); r.start = t; r.dur = c.dur - cut;
+      const r = clone(c), od = c.dur; r.id = uid(); r.start = t; r.dur = c.dur - cut;
       if (c.type === 'video' || c.type === 'audio') r.in = c.in + cut * c.speed;
       if (c.kf && c.kf.length) { const v = Object.assign({}, propsAt(c, cut)); r.kf = [Object.assign({}, v, { t: 0 })].concat(c.kf.filter(k => k.t > cut).map(k => Object.assign({}, k, { t: +(k.t - cut).toFixed(3) }))); c.kf = c.kf.filter(k => k.t < cut).concat([Object.assign({}, v, { t: +cut.toFixed(3) })]); }
+      if (c.type === 'caption') { const w = c.text.trim().split(/\s+/); if (w.length > 1) { const k = clamp(Math.round(w.length * cut / od), 1, w.length - 1); c.text = w.slice(0, k).join(' '); r.text = w.slice(k).join(' '); } }
       c.dur = cut; c.fadeOut = 0; r.fadeIn = 0; c.tout = 'none'; r.tin = 'none'; S.p.clips.push(r);
     }
     n ? commit() : toast('הסמן לא נמצא על קליפ');
@@ -440,6 +432,7 @@ const ACT = {
   trkMute(v, el) { const t = trackById(el.closest('.th').dataset.t); t.muted = !t.muted; commit(); },
   trkHide(v, el) { const t = trackById(el.closest('.th').dataset.t); t.hidden = !t.hidden; commit(); },
   trkDel(v, el) { const id = el.closest('.th').dataset.t; S.p.tracks = S.p.tracks.filter(t => t.id !== id); S.p.clips = S.p.clips.filter(c => c.trackId !== id); if (!selClip()) S.sel = null; commit(); },
+  fit() { setZoom((scroller.clientWidth - 40) / projDur(), 0, 0); },
   setFmt(v) { setFmt(v); },
   look(v) { const c = selClip(); if (c) { c.look = v; commit(); } },
   swatch(v) { const c = selClip(); if (c && c.type === 'text') { c.color = v; commit(); } else if (c && c.type === 'solid') { c.color = v; commit(); } else toast('בחרי טקסט כדי לצבוע אותו'); },
@@ -516,7 +509,18 @@ document.addEventListener('click', e => {
 $('#btnExport').addEventListener('click', openExport);
 $('#projName').addEventListener('change', e => { S.p.name = e.target.value.trim() || 'סרטון חדש'; commit(); });
 $('#fmt').addEventListener('change', e => setFmt(e.target.value));
-$('#zoom').addEventListener('input', e => { const c = S.t * S.pps - scroller.scrollLeft; S.pps = +e.target.value; renderTimeline(); scroller.scrollLeft = Math.max(0, S.t * S.pps - c); });
+function setZoom(pps, anchorT, anchorX) { S.pps = clamp(pps, 8, 240); $('#zoom').value = S.pps; renderTimeline(); scroller.scrollLeft = Math.max(0, anchorT * S.pps - anchorX); }
+$('#zoom').addEventListener('input', e => setZoom(+e.target.value, S.t, S.t * S.pps - scroller.scrollLeft));
+scroller.addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return; e.preventDefault();
+  const x = e.clientX - scroller.getBoundingClientRect().left; setZoom(S.pps * Math.exp(-e.deltaY * 0.002), (scroller.scrollLeft + x) / S.pps, x);
+}, { passive: false });
+let wheelT = 0;
+cv.addEventListener('wheel', e => {
+  const c = selClip(); if (!c || c.type === 'audio' || c.type === 'caption') return; e.preventDefault();
+  const p = propsAt(c, clamp(S.t - c.start, 0, c.dur)); setProp(c, 'scale', +clamp(p.scale * Math.exp(-e.deltaY * 0.0015), 0.1, 4).toFixed(3)); requestDraw();
+  clearTimeout(wheelT); wheelT = setTimeout(commit, 350);
+}, { passive: false });
 
 /* ===== files ===== */
 async function handleFiles(files) {
@@ -555,7 +559,7 @@ async function boot() {
   try {
     await DB.open(); const { pj, rows } = await DB.load();
     for (const r of rows) { try { const m = await buildMedia(r); S.media.set(m.id, m); } catch (e) { } }
-    if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) { S.p = pj; restored = true; }
+    if (pj && Array.isArray(pj.clips) && Array.isArray(pj.tracks)) { S.p = normalizeProject(pj); restored = true; }
   } catch (e) { }
   setCanvas(); H.stack = [snap()]; H.i = 0; refresh(); renderPanel(); uiPlay(); seek(restored ? 0 : 1.2);
   if (document.fonts) { document.fonts.ready.then(() => requestDraw()); ['800 40px Rubik', '500 40px Rubik', '400 40px "Secular One"', '700 40px Heebo'].forEach(f => document.fonts.load(f).then(requestDraw, () => { })); }

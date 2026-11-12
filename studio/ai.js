@@ -100,7 +100,7 @@ function waitMedia() {
     const t0 = performance.now();
     (function chk() {
       let ok = true;
-      for (const c of S.p.clips) { if (c.type !== 'video') continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = EL.get(c.id); if (!e || e.el.seeking || e.el.readyState < 2) ok = false; }
+      for (const c of S.p.clips) { if (c.type !== 'video') continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue; const e = getEl(c); if (!e || e.el.seeking || e.el.readyState < 2) ok = false; }
       if (ok || performance.now() - t0 > 1500) res(); else setTimeout(chk, 60);
     })();
   });
