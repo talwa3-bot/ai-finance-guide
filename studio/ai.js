@@ -170,7 +170,10 @@ function transcribe(m, onProg) {
     const fin = () => { if (done) return; done = true; clearTimeout(guard); try { rec.onend = null; rec.stop(); } catch (e) { } try { el.pause(); el.removeAttribute('src'); el.load(); } catch (e) { } res(segs.length ? segs : null); };
     try {
       el = document.createElement(m.kind === 'video' ? 'video' : 'audio'); el.muted = true; el.playsInline = true; el.preload = 'auto'; el.src = m.url;
-      guard = setTimeout(fin, (m.duration * 1.3 + 10) * 1000);
+      guard = setTimeout(fin, (m.duration * 1.3 + 10) * 1000); transcribe.cancel = fin;
+      // give up early when nothing plays, or when a long stretch passes and not one word was recognised
+      setTimeout(() => { if (!done && el.currentTime < 0.5) fin(); }, 8000);
+      setTimeout(() => { if (!done && !segs.length) fin(); }, 25000);
       el.addEventListener('ended', () => setTimeout(fin, 1800)); el.addEventListener('error', fin);
       el.addEventListener('timeupdate', () => onProg && onProg(el.currentTime / m.duration));
       el.addEventListener('canplay', () => {
@@ -230,7 +233,7 @@ function askBrief() {
     ACT.autoSkip = () => end('');
   });
 }
-const autoProgress = t => modal(`<h3>בונה סרטון שיווקי...</h3><div class="bar"><i id="autoBar" style="width:4%"></i></div><p class="hint busy" id="autoStep">${esc(t)}</p><p class="hint">לא לסגור את המסך. בסוף יופיע סיכום.</p>`);
+const autoProgress = t => modal(`<h3>בונה סרטון שיווקי...</h3><div class="bar"><i id="autoBar" style="width:4%"></i></div><p class="hint busy" id="autoStep">${esc(t)}</p><p class="hint">לא לסגור את המסך. בסוף יופיע סיכום.</p><button type="button" class="btn sm" data-a="autoNoListen" id="autoNoListen">לדלג על ההקשבה</button>`);
 async function planEdit(lines, brief, frames) {
   const d = projDur(), has = lines.length > 0;
   return AI.json(`You are the senior video editor and marketing director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". A member uploaded a raw video. Turn it into a short marketing video that a finance professional will stop scrolling for. Write everything in HEBREW.
@@ -267,7 +270,7 @@ async function autoEdit(mediaIds) {
     const heard = new Map(); let n = 0;
     for (const m of vids) { const segs = await transcribe(m, u => autoBar(4 + 40 * (n + u) / vids.length)); if (segs) heard.set(m.id, segs); n++; }
     if (!$('#autoBar')) autoProgress('חותך שתיקות');
-    autoBar(46); autoStep('חותך שתיקות');
+    autoBar(46); autoStep('חותך שתיקות'); { const sk = $('#autoNoListen'); if (sk) sk.remove(); }
     // 2. tight cuts
     await Promise.race([Promise.all(srcs.filter(m => m.peaksReady).map(m => m.peaksReady)), new Promise(r => setTimeout(r, 30000))]);
     let removed = 0; for (const c of S.p.clips.filter(c => c.type === 'video')) { const r = removeSilence(c); if (typeof r === 'number') removed += r; }
@@ -384,6 +387,7 @@ $('#panel').addEventListener('change', e => {
 });
 Object.assign(ACT, {
   autoEdit() { autoEdit(); },
+  autoNoListen() { if (transcribe.cancel) transcribe.cancel(); },
   autoPlay() { closeModal(); seek(0); play(); },
   aiSec(v) { aiSec = v; renderPanel(); },
   aiMake() { aiMake(); },
