@@ -222,9 +222,26 @@ function insertCard(T, d, card) {
   if (body) S.p.clips.push(mkText({ brand: 'ins', trackId: t2.id, start: T + 0.4, dur: d - 0.4, text: body, size: 52, weight: 500, y: tall ? 0.06 : 0.12, anim: 'slide' }));
   return true;
 }
+// Numbered contact sheets of the whole video, so Claude sees it from start to end and can read
+// captions or on-screen text that are already part of the footage.
+async function contactSheets(lim, onProg) {
+  pause(); const was = S.t, sel = S.sel, D = projDur(), tall = S.p.h > S.p.w, cols = tall ? 4 : 3, rows = tall ? 3 : 4, per = cols * rows;
+  const N = Math.min(lim.maxCount * per, Math.max(per, Math.ceil(D / 1.0))), cw = tall ? 320 : 440, ch = Math.round(cw * S.p.h / S.p.w), times = [], sheets = [];
+  S.sel = null; let sc = null, x = null;
+  const flush = async () => { if (!sc) return; let q = 0.82, b = null; for (let i = 0; i < 4; i++) { b = await new Promise(r => sc.toBlob(r, 'image/jpeg', q)); if (!b || !lim.maxBytes || b.size <= lim.maxBytes) break; q -= 0.18; } if (b) sheets.push(b); sc = null; };
+  for (let i = 0; i < N; i++) {
+    if (i % per === 0) { await flush(); sc = document.createElement('canvas'); sc.width = cols * cw; sc.height = rows * ch; x = sc.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, sc.width, sc.height); }
+    const t = D * (i + 0.5) / N; times.push(+t.toFixed(1));
+    S.t = t; syncMedia(); await waitMedia(); S.exporting = true; draw(); S.exporting = false;
+    const k = i % per, px = (k % cols) * cw, py = Math.floor(k / cols) * ch; x.drawImage(cv, px, py, cw, ch);
+    x.fillStyle = '#000'; x.fillRect(px, py, 46, 26); x.fillStyle = '#FFD23F'; x.font = '700 18px sans-serif'; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillText(String(i + 1), px + 23, py + 14);
+    if (onProg) onProg((i + 1) / N);
+  }
+  await flush(); S.sel = sel; seek(was); return { sheets, times };
+}
 function askBrief() {
   return new Promise(res => {
-    modal(`<h3>על מה הסרטון?</h3><p class="hint">לא הצלחתי לשמוע את הדיבור ולא לזהות את הנושא מהתמונות. משפט אחד מספיק, ואת כל השאר העורך עושה לבד.</p>
+    modal(`<h3>על מה הסרטון?</h3><p class="hint">במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון עצמו לא מצאתי כתוביות או טקסט שמסבירים את הנושא. משפט אחד מספיק, ואת כל השאר העורך עושה לבד.</p>
     <textarea id="autoBrief" rows="2" placeholder="למשל: איך לבדוק התאמת בנקים עם בינה מלאכותית בעשר דקות"></textarea>
     <div class="rowf" style="margin-top:10px"><button type="button" class="btn primary" data-a="autoGo">המשך</button><button type="button" class="btn" data-a="autoSkip">בלי נושא, רק חיתוך ומיתוג</button></div>`);
     let over = false; const end = v => { if (over) return; over = true; clearInterval(iv); ACT.autoGo = ACT.autoSkip = () => { }; res(v); };
@@ -234,14 +251,14 @@ function askBrief() {
   });
 }
 const autoProgress = t => modal(`<h3>בונה סרטון שיווקי...</h3><div class="bar"><i id="autoBar" style="width:4%"></i></div><p class="hint busy" id="autoStep">${esc(t)}</p><p class="hint">לא לסגור את המסך. בסוף יופיע סיכום.</p><button type="button" class="btn sm" data-a="autoNoListen" id="autoNoListen">לדלג על ההקשבה</button>`);
-async function planEdit(lines, brief, frames) {
+async function planEdit(lines, brief, vis) {
   const d = projDur(), has = lines.length > 0;
   return AI.json(`You are the senior video editor and marketing director of AI Finance, an Israeli community of 2,000+ finance professionals (CFOs, controllers, FP&A, CPAs) whose promise is "bridging the gap between the world of finance and the world of AI". A member uploaded a raw video. Turn it into a short marketing video that a finance professional will stop scrolling for. Write everything in HEBREW.
 
 The cut footage is ${d.toFixed(1)} seconds long, format ${S.p.fmt}.
 ${has ? 'Transcript of what is said, with the second on the timeline where each line starts:\n' + lines.map(l => '[' + l.t.toFixed(1) + '] ' + l.text).join('\n') : 'There is no transcript: the speech could not be heard.'}
 ${brief ? 'The creator describes the video as: ' + brief : ''}
-${frames ? 'Attached are ' + frames + ' still frames from the video.' : ''}
+${vis ? 'Attached: ' + vis.sheets.length + ' contact sheet(s) holding ' + vis.times.length + ' numbered frames of the video in time order. Frame number -> second on the timeline: ' + vis.times.map((t, i) => (i + 1) + '=' + t).join(', ') + '.\nLook at every frame. If the footage already carries burned-in captions or other on-screen text, read it frame by frame: those captions are the transcript of what is said, and the frame number tells you when. Set "burned" to true in that case.' : ''}
 
 Plan these elements:
 - "hook": the opening title for the first 3 seconds. Up to 6 words. It names the viewer's real pain or the concrete gain, never a greeting.
@@ -251,9 +268,9 @@ Plan these elements:
 - "title": a short project name.
 - "post": a LinkedIn post that accompanies the video: sharp first line, 900 to 1300 characters, short paragraphs, one call to action, then 5 hashtags in English only.
 
-Hard rules: ${has ? 'every text must come from what is actually said in the transcript' : 'you did not hear the video, so every text may only frame the topic (a question, a promise, a section name) and must not claim what is said in it'}. Never invent facts, names, numbers or statistics. No emojis, no long dashes, no English words inside Hebrew sentences (the name AI Finance is allowed). Concrete and practical, no hype.
-${has || brief ? '' : 'If the frames do not clearly show what the video is about (for example only a person talking), set "understood" to false and leave the rest empty. Do not guess.'}
-Reply with only JSON: {"understood": boolean, "title": string, "hook": string, "points": [{"at": number, "text": string}], "cards": [{"at": number, "heading": string, "body": string}], "cta": string, "post": string}`, frames ? { images: planEdit.frames, cache: false } : { cache: false });
+Hard rules: ${has ? 'every text must come from what is actually said in the transcript' : 'you did not hear the video. If you can read captions in the frames, every text must come from what those captions say. Otherwise every text may only frame the topic (a question, a promise, a section name) and must not claim what is said in it'}. Never invent facts, names, numbers or statistics. No emojis, no long dashes, no English words inside Hebrew sentences (the name AI Finance is allowed). Concrete and practical, no hype.
+${has || brief ? '' : 'If there are no readable captions and the frames do not clearly show what the video is about (for example only a person talking, with no text), set "understood" to false and leave the rest empty. Do not guess.'}
+Reply with only JSON: {"understood": boolean, "burned": boolean, "title": string, "hook": string, "points": [{"at": number, "text": string}], "cards": [{"at": number, "heading": string, "body": string}], "cta": string, "post": string}`, vis && vis.sheets.length ? { images: vis.sheets, cache: false } : { cache: false });
 }
 async function autoEdit(mediaIds) {
   if (autoBusy) return;
@@ -285,8 +302,8 @@ async function autoEdit(mediaIds) {
     let plan = null, brief = '';
     if (AI) {
       autoStep('קלוד צופה בסרטון ומתכנן את העריכה');
-      let frames = 0; try { const lim = await AI.limits(), max = lim && lim.images ? Math.min(4, lim.images.maxCount) : 0; if (max) { const cap = await captureFrames(max); planEdit.frames = cap.frames; frames = cap.frames.length; } } catch (e) { }
-      autoBar(65);
+      let frames = null; try { const lim = await AI.limits(); if (lim && lim.images && lim.images.maxCount) { const hold = S.p.clips; S.p.clips = hold.filter(c => c.type !== 'caption'); try { frames = await contactSheets({ maxCount: Math.min(4, lim.images.maxCount), maxBytes: lim.images.maxBytes }, u => autoBar(55 + 10 * u)); } finally { S.p.clips = hold; } } } catch (e) { frames = null; }
+      autoBar(65); autoStep('קלוד מתכנן את העריכה');
       try {
         plan = await planEdit(lines, '', frames);
         if (!lines.length && !(plan && plan.understood && String(plan.hook || '').trim())) {
@@ -297,6 +314,8 @@ async function autoEdit(mediaIds) {
     }
     autoBar(85); autoStep('מרכיב את הסרטון');
     // 5. build
+    const burned = !!(plan && plan.burned);
+    if (burned) { if (caps) { S.p.clips = S.p.clips.filter(c => !(c.type === 'caption' && c.auto)); const i = done.findIndex(t => t.startsWith('כתוביות צרובות')); if (i >= 0) done.splice(i, 1); } done.push('קראתי את הכתוביות שכבר נמצאות בסרטון, והעריכה נבנתה לפיהן'); }
     if (plan) {
       const D = projDur(), tall = S.p.h > S.p.w, hook = String(plan.hook || '').trim().slice(0, 80);
       if (hook) { S.p.clips.push(mkText(Object.assign(clone(TEXT_PRESETS.hook[1]), { brand: 'hook', trackId: firstTrack('text').id, start: 0, dur: Math.min(3, D), text: hook }))); done.push('כותרת פתיחה: ' + hook); }
@@ -322,9 +341,9 @@ async function autoEdit(mediaIds) {
     done.push('תג לוגו בפינה'); done.push('סיומת עם הלוגו, הסלוגן וקריאה לפעולה');
     const lastV = S.p.clips.filter(c => c.type === 'video').sort((a, b) => b.start - a.start)[0]; if (lastV) { lastV.tout = 'fade'; lastV.fadeOut = Math.min(0.4, lastV.dur / 2); }
     // what could not be done, said plainly
-    if (!caps) skipped.push(vids.some(m => m.duration > LISTEN_MAX) ? 'כתוביות: הסרטון ארוך מארבע דקות, ולכן לא הקשבתי לו' : 'כתוביות: הדפדפן הזה לא הצליח לשמוע את הדיבור. בכרום מעודכן במחשב זה אמור לעבוד');
+    if (!caps && !burned) skipped.push(vids.some(m => m.duration > LISTEN_MAX) ? 'כתוביות: הסרטון ארוך מארבע דקות, ולכן לא הקשבתי לו' : 'כתוביות: במכשיר הזה אי אפשר לשמוע את הדיבור, ובסרטון אין כתוביות לקרוא');
     if (!plan) skipped.push(AI ? (brief || lines.length ? 'תכנון העריכה לא הצליח הפעם. אפשר להריץ שוב' : 'כותרת, נקודות מפתח ושקפי ביניים: לא נוספו, כי הנושא לא ידוע ולא רציתי לנחש') : 'כותרת, נקודות מפתח ושקפי ביניים: נכתבים רק כשהעורך פתוח בתוך קלוד');
-    else if (!lines.length) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור, כי לא הצלחתי לשמוע אותו. כדאי לעבור עליהם');
+    else if (!lines.length && !burned) skipped.push('הטקסטים נכתבו לפי ' + (brief ? 'המשפט שכתבת' : 'התמונות') + ' ולא לפי הדיבור, כי לא הצלחתי לשמוע אותו. כדאי לעבור עליהם');
     autoBar(100); S.sel = null; commit(); seek(0); renderPanel();
     modal(`<h3>הסרטון מוכן</h3><p class="hint">${esc(S.p.name)} · אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
     <h4>מה נעשה</h4><div class="col">${done.map(t => `<div class="crit"><p>${esc(t)}</p></div>`).join('')}</div>
