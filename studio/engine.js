@@ -341,8 +341,10 @@ function drawClip(c, l, W, H) {
     ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
   } else {
     // the corner logo is white: a soft dark halo keeps it readable over a bright wall or light hair
-    if (c.brand === 'bug') { ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 14 * RS; }
-    ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    // The corner logo sits on a small plate in the brand color. A bare white logo disappears over
+    // light hair or a bright wall; on its plate it reads on any footage.
+    if (c.brand === 'bug') { const px = sw * 0.07, py = sh * 0.2; ctx.save(); ctx.globalAlpha *= 0.9; ctx.fillStyle = S.brand.color || BRAND.deep; rrect(-sw / 2 - px, -sh / 2 - py, sw + 2 * px, sh + 2 * py, sh * 0.28); ctx.fill(); ctx.restore(); }
+    ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh);
   }
   ctx.filter = 'none';
   if (c.id === S.sel && !S.exporting) { ctx.lineWidth = 5 / (base * sc); ctx.strokeStyle = BRAND.gold; ctx.strokeRect(-sw / 2, -sh / 2, sw, sh); }

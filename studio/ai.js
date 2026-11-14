@@ -465,7 +465,7 @@ async function autoEdit(mediaIds) {
     diag('frames', sheetsAt.total + ' read, ' + sheetsAt.black + ' black'); diag('look', look ? look.checked + ' checked, ' + look.removed.length + ' removed' : 'not run');
     diag('export', (pickMime() || 'none') + (cv.captureStream ? '' : ' no-capture')); diag('secs', Math.round((performance.now() - T0) / 1000));
     if (sheetsAt.total && sheetsAt.black > sheetsAt.total * 0.3) skipped.push('חלק גדול מהתמונות שנשלחו לקלוד יצאו שחורות במכשיר הזה (' + sheetsAt.black + ' מתוך ' + sheetsAt.total + '), ולכן ייתכן שהוא לא ראה את הכתוביות');
-    const rep = 'AI Finance Studio v15\n' + navigator.userAgent.replace(/Mozilla\/5\.0 /, '').slice(0, 120) + '\n' + DIAG.log.join('\n') + (DIAG.errors.length ? '\nerrors: ' + DIAG.errors.join(' | ') : '\nerrors: none');
+    const rep = 'AI Finance Studio v16\n' + navigator.userAgent.replace(/Mozilla\/5\.0 /, '').slice(0, 120) + '\n' + DIAG.log.join('\n') + (DIAG.errors.length ? '\nerrors: ' + DIAG.errors.join(' | ') : '\nerrors: none');
     const sec = (t, a, cls) => a.length ? `<h4>${t}</h4><div class="col">${a.map(x => `<div class="crit"><p${cls ? ' class="fx"' : ''}>${esc(x)}</p></div>`).join('')}</div>` : '';
     modal(`<h3>הסרטון מוכן</h3><p class="hint">${esc(S.p.name)} · אורך ${fmtT(projDur())} · ${S.p.fmt}</p>
     <div class="rowf" style="margin:10px 0 4px"><button type="button" class="btn primary" data-a="autoPlay">ניגון</button><button type="button" class="btn gold" data-a="export">ייצוא</button><button type="button" class="btn" data-a="closeModal">סגירה</button></div>
