@@ -296,7 +296,7 @@ function draw() {
   ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.shadowColor = 'transparent';
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   // the corner logo steps aside while a full brand card is on screen
-  const cardOn = p.clips.some(c => c.brand === 'card' && t >= c.start && t < c.start + c.dur);
+  const cardOn = p.clips.some(c => (c.brand === 'card' || c.brand === 'hook' || c.brand === 'point') && t >= c.start && t < c.start + c.dur);
   for (let i = p.tracks.length - 1; i >= 0; i--) {
     const tr = p.tracks[i]; if (tr.type === 'audio' || tr.hidden) continue;
     for (const c of p.clips) {
@@ -339,7 +339,11 @@ function drawClip(c, l, W, H) {
     if (c.grad) ctx.fillStyle = brandGrad(sw, sh, c.color);
     else ctx.fillStyle = c.color;
     ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
-  } else ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh);
+  } else {
+    // the corner logo is white: a soft dark halo keeps it readable over a bright wall or light hair
+    if (c.brand === 'bug') { ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 14 * RS; }
+    ctx.drawImage(src, -sw / 2, -sh / 2, sw, sh); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+  }
   ctx.filter = 'none';
   if (c.id === S.sel && !S.exporting) { ctx.lineWidth = 5 / (base * sc); ctx.strokeStyle = BRAND.gold; ctx.strokeRect(-sw / 2, -sh / 2, sw, sh); }
 }
@@ -467,6 +471,9 @@ function pause() { S.playing = false; uiPlay(); requestDraw(); }
 function seek(t) { S.t = clamp(t, 0, Math.max(0, projDur() - 0.001)); if (S.playing) lastTs = 0; requestDraw(); }
 
 /* ===== export ===== */
+// Bits per second for the picture. A talking-head clip for social media looks right at these rates,
+// and a minute comes to roughly 17 MB at 720 and 38 MB at 1080, instead of 45 and 90.
+const EXPORT_RATE = { '720': 2.2e6, '1080': 5e6 };
 const EXP = { rec: null, chunks: [], mime: '', dest: null, blob: null, cancel: false };
 function pickMime() {
   if (!window.MediaRecorder) return '';
@@ -482,7 +489,7 @@ async function startExport(quality) {
   await new Promise(r => setTimeout(r, 700));
   const stream = cv.captureStream(S.p.fps);
   if (AC) { EXP.dest = AC.createMediaStreamDestination(); MASTER.connect(EXP.dest); EXP.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t)); }
-  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: quality === '720' ? 6e6 : 12e6, audioBitsPerSecond: 192e3 });
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: EXPORT_RATE[quality] || EXPORT_RATE['720'], audioBitsPerSecond: 128e3 });
   EXP.rec = rec; rec.ondataavailable = e => { if (e.data && e.data.size) EXP.chunks.push(e.data); };
   rec.onstop = () => {
     stream.getTracks().forEach(t => t.stop());

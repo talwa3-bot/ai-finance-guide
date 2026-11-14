@@ -380,11 +380,12 @@ const safeName = () => (S.p.name || 'video').replace(/[\\/:*?"<>|]+/g, ' ').trim
 /* ===== modal + export ===== */
 function modal(html) { $('#mbox').innerHTML = html; $('#modal').hidden = false; }
 function closeModal() { const v = $('#mbox video'); if (v) { v.pause(); URL.revokeObjectURL(v.src); } $('#modal').hidden = true; $('#mbox').innerHTML = ''; }
-let expQ = matchMedia('(max-width: 860px)').matches ? '720' : '1080';
+let expQ = '720'; // the small file is the default everywhere; 1080 is one tap away
 function openExport() {
   pause(); const mime = pickMime(), d = projDur();
   modal(`<h3>ייצוא הסרטון</h3><p class="hint">אורך ${fmtT(d)} · ${S.p.fmt} · קובץ ${mime.includes('mp4') ? 'MP4' : mime ? 'WebM' : 'לא נתמך'}</p>
-  <div class="chips" id="qChips"><button type="button" class="chip${expQ === '1080' ? ' on' : ''}" data-a="expQ" data-v="1080">איכות מלאה 1080</button><button type="button" class="chip${expQ === '720' ? ' on' : ''}" data-a="expQ" data-v="720">קל יותר 720</button></div>
+  <div class="chips" id="qChips"><button type="button" class="chip${expQ === '1080' ? ' on' : ''}" data-a="expQ" data-v="1080">איכות גבוהה 1080</button><button type="button" class="chip${expQ === '720' ? ' on' : ''}" data-a="expQ" data-v="720">קובץ קטן 720</button></div>
+  <p class="hint" id="expSize">גודל משוער: ${Math.max(1, Math.round(d * (EXPORT_RATE[expQ] + 128e3) / 8e6))} MB</p>
   <p class="hint">הייצוא רץ בזמן אמת, כלומר דקה של סרטון לוקחת בערך דקה. חשוב להשאיר את המסך הזה פתוח וגלוי עד הסוף.</p>
   <div class="rowf"><button type="button" class="btn primary" data-a="expGo"${mime ? '' : ' disabled'}>התחלת ייצוא</button><button type="button" class="btn" data-a="closeModal">ביטול</button></div>`);
 }
@@ -494,7 +495,7 @@ const ACT = {
   newProj() { modal(`<h3>פרויקט חדש</h3><p class="hint">ציר הזמן הנוכחי יימחק. הקבצים שהעלית נשארים בלשונית מדיה.</p><div class="rowf"><button type="button" class="btn primary" data-a="newProjGo">פתיחת פרויקט ריק</button><button type="button" class="btn" data-a="closeModal">ביטול</button></div>`); },
   newProjGo() { closeModal(); S.p = newProject(); S.sel = null; setCanvas(); seek(0); commit(); renderPanel(); },
   export() { openExport(); }, closeModal() { closeModal(); },
-  expQ(v) { expQ = v; $$('#qChips .chip').forEach(b => b.classList.toggle('on', b.dataset.v === v)); },
+  expQ(v) { expQ = v; $$('#qChips .chip').forEach(b => b.classList.toggle('on', b.dataset.v === v)); const e = $('#expSize'); if (e) e.textContent = 'גודל משוער: ' + Math.max(1, Math.round(projDur() * (EXPORT_RATE[v] + 128e3) / 8e6)) + ' MB'; },
   async expGo() {
     S.sel = null; renderTimeline(); renderInspector();
     modal(`<h3>מייצא...</h3><div class="bar"><i id="expBar"></i></div><p class="hint">הסרטון מתנגן ומוקלט עכשיו. לא לסגור ולא לעבור לשונית.</p><button type="button" class="btn" data-a="expCancel">עצירה</button>`);

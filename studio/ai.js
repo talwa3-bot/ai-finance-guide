@@ -277,7 +277,9 @@ ${has || brief ? '' : 'If there are no readable captions and the frames do not c
 Reply with only JSON: {"understood": boolean, "burned": boolean, "title": string, "hook": string, "points": [{"at": number, "text": string}], "cta": string, "post": string}`, vis && vis.sheets.length ? { images: vis.sheets, cache: false } : { cache: false });
 }
 // the top band: above a speaker's face, and far from captions near the bottom
-const TOPY = () => S.p.fmt === '9:16' ? -0.33 : S.p.h > S.p.w ? -0.36 : S.p.h === S.p.w ? -0.36 : -0.34;
+// In a close selfie the face fills the frame from about a fifth of the way down, so titles sit right at the top,
+// over the hair, and the corner logo steps aside while one is showing.
+const TOPY = () => S.p.fmt === '9:16' ? -0.39 : S.p.h >= S.p.w ? -0.4 : -0.38;
 // Numbered contact sheets of chosen moments, so Claude can see the video and read text that is part of it.
 async function sheetsAt(times, lim, onProg, first, big) {
   // big: a few frames shown large, for judging how something looks rather than reading along
