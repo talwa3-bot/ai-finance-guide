@@ -220,6 +220,8 @@ function getEl(c) {
     el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', ''); el.src = m.url;
     el.addEventListener('seeked', requestDraw); el.addEventListener('loadeddata', requestDraw);
     e = { el, gain: null, unlocked: false }; EL.set(k, e); if (AC) hook(e);
+    // which moment of the footage is on screen right now, as opposed to where the sound is
+    if (el.requestVideoFrameCallback) { const cb = (now, meta) => { e.shown = meta.mediaTime; el.requestVideoFrameCallback(cb); }; el.requestVideoFrameCallback(cb); }
   }
   return e;
 }
@@ -458,7 +460,7 @@ function loop(ts) {
     else { if (!mediaStalled()) stallT = 0; S.t += Math.min(dt, 0.5); }
     const d = projDur();
     if (S.t >= d) { S.t = Math.max(0, d - 0.001); pause(); if (S.exporting) finishExport(); }
-    syncMedia(); draw(); uiTime();
+    syncMedia(); draw(); trackLipSync(); uiTime();
   } else if (dirty) { dirty = false; syncMedia(); draw(); uiTime(); }
 }
 function play() {
@@ -476,6 +478,19 @@ function seek(t) { S.t = clamp(t, 0, Math.max(0, projDur() - 0.001)); if (S.play
 // Bits per second for the picture. A talking-head clip for social media looks right at these rates,
 // and a minute comes to roughly 17 MB at 720 and 38 MB at 1080, instead of 45 and 90.
 const EXPORT_RATE = { '720': 2.2e6, '1080': 5e6 };
+// seconds between a frame being drawn and it landing in the recording, found by measuring exported files
+const SYNC_BASE = 0.04;
+function trackLipSync() {
+  if (!S.exporting || !EXP.delay || !AC) return;
+  for (const c of S.p.clips) {
+    if (c.type !== 'video') continue; const l = S.t - c.start; if (l < 0 || l >= c.dur) continue;
+    const e = EL.get(elKey(c)); if (!e || e.shown == null || e.el.paused || e.el.seeking) continue;
+    const stale = e.el.currentTime - e.shown; if (stale < 0 || stale > 0.25) continue;
+    EXP.lag += (stale - EXP.lag) * 0.02;
+    EXP.delay.delayTime.setTargetAtTime(clamp(SYNC_BASE + EXP.lag, 0.02, 0.4), AC.currentTime, 0.4);
+    return;
+  }
+}
 const EXP = { rec: null, chunks: [], mime: '', dest: null, blob: null, cancel: false };
 function pickMime() {
   if (!window.MediaRecorder) return '';
@@ -490,12 +505,19 @@ async function startExport(quality) {
   setCanvas(scale); seek(0); syncMedia(); draw();
   await new Promise(r => setTimeout(r, 700));
   const stream = cv.captureStream(S.p.fps);
-  if (AC) { EXP.dest = AC.createMediaStreamDestination(); MASTER.connect(EXP.dest); EXP.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t)); }
+  // Lip sync. The picture reaches the recording later than the sound: a video frame is decoded, drawn
+  // on the canvas at the next screen refresh, and only then captured. Left alone, the sound runs ahead
+  // of the lips. So the recorded sound passes through a delay equal to the picture's lag: a fixed part
+  // for drawing and capture, plus how stale the frame on screen is, measured while exporting.
+  if (AC) {
+    EXP.dest = AC.createMediaStreamDestination(); EXP.delay = AC.createDelay(1); EXP.delay.delayTime.value = SYNC_BASE + 0.02; EXP.lag = 0.02;
+    MASTER.connect(EXP.delay); EXP.delay.connect(EXP.dest); EXP.dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+  }
   const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: EXPORT_RATE[quality] || EXPORT_RATE['720'], audioBitsPerSecond: 128e3 });
   EXP.rec = rec; rec.ondataavailable = e => { if (e.data && e.data.size) EXP.chunks.push(e.data); };
   rec.onstop = () => {
     stream.getTracks().forEach(t => t.stop());
-    if (EXP.dest) { try { MASTER.disconnect(EXP.dest); } catch (e) { } EXP.dest = null; }
+    if (EXP.dest) { try { MASTER.disconnect(EXP.delay); EXP.delay.disconnect(); } catch (e) { } EXP.dest = null; EXP.delay = null; }
     S.exporting = false; setCanvas();
     if (!EXP.cancel) { EXP.blob = new Blob(EXP.chunks, { type: mime.split(';')[0] }); exportDone(); }
   };
