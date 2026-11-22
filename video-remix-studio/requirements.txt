@@ -1,0 +1,4 @@
+# Orchestrator only. Each engine gets its own environment via `python -m remix setup`.
+gradio>=4.44
+huggingface_hub>=0.24
+uv>=0.4
