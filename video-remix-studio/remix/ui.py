@@ -1,12 +1,13 @@
 """One web interface over all three engines (Hebrew, right-to-left)."""
 from __future__ import annotations
 
+import os
 import subprocess
 
 import gradio as gr
 
 from . import runner
-from .registry import ENGINES, VACE_TASKS
+from .registry import ENGINES, OUTPUTS_DIR, VACE_TASKS
 
 _wangp_proc: subprocess.Popen | None = None
 
@@ -121,5 +122,16 @@ def build() -> gr.Blocks:
     return app
 
 
-def launch(port: int = 7870, share: bool = False) -> None:
-    build().queue().launch(server_port=port, share=share)
+def launch(port: int = 7870, share: bool = False, host: str = "127.0.0.1") -> None:
+    """Set REMIX_UI_PASSWORD (and optionally REMIX_UI_USER) to require a login.
+
+    A login is mandatory when the UI is reachable from other devices (host 0.0.0.0
+    or --share), so a public address never opens without a password.
+    """
+    password = os.environ.get("REMIX_UI_PASSWORD")
+    if (host != "127.0.0.1" or share) and not password:
+        raise SystemExit("Set REMIX_UI_PASSWORD before exposing the UI to other devices.")
+    auth = (os.environ.get("REMIX_UI_USER", "remix"), password) if password else None
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    build().queue().launch(server_name=host, server_port=port, share=share, auth=auth,
+                           allowed_paths=[str(OUTPUTS_DIR)])

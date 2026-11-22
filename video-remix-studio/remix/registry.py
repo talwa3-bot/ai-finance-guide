@@ -40,6 +40,14 @@ class Engine:
         return win if win.exists() else self.venv / "bin" / "python"
 
 
+# flash_attn (in VACE and Wan2.1 requirements) must be built against the torch that
+# is already installed, so it cannot go through pip's isolated build. Install it
+# on its own first; the requirements file then finds it already satisfied.
+FLASH_ATTN = [
+    ["packaging", "ninja", "psutil", "setuptools", "wheel"],
+    ["flash_attn", "--no-build-isolation"],
+]
+
 ENGINES: dict[str, Engine] = {
     "vace": Engine(
         key="vace",
@@ -50,6 +58,7 @@ ENGINES: dict[str, Engine] = {
         torch=["torch==2.5.1", "torchvision==0.20.1",
                "--index-url", "https://download.pytorch.org/whl/cu124"],
         install=[
+            *FLASH_ATTN,
             ["-r", "requirements.txt"],
             ["wan@git+https://github.com/Wan-Video/Wan2.1"],
             ["-r", "requirements/annotator.txt"],
@@ -63,7 +72,7 @@ ENGINES: dict[str, Engine] = {
         python="3.10",
         torch=["torch==2.5.1", "torchvision==0.20.1",
                "--index-url", "https://download.pytorch.org/whl/cu124"],
-        install=[["-r", "requirements.txt"]],
+        install=[*FLASH_ATTN, ["-r", "requirements.txt"]],
     ),
     "wangp": Engine(
         key="wangp",

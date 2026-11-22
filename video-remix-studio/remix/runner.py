@@ -56,6 +56,15 @@ def ensure_ready(engine: Engine) -> None:
         sys.exit(f"Engine '{engine.key}' is not installed. Run:  python -m remix setup {engine.key}")
 
 
+def check_inputs(*paths: str | None) -> None:
+    """Fail early on missing input files (only warn in dry-run)."""
+    missing = [p for p in paths if p and not Path(p).expanduser().exists()]
+    for p in missing:
+        print(f"warning: input file not found: {p}", flush=True)
+    if missing and not DRY_RUN:
+        sys.exit("Missing input file(s); nothing was run.")
+
+
 def new_output(prefix: str) -> Path:
     OUTPUTS_DIR.mkdir(exist_ok=True)
     return OUTPUTS_DIR / f"{prefix}_{datetime.now():%Y%m%d_%H%M%S}.mp4"
@@ -78,20 +87,26 @@ def setup(keys: list[str], update: bool = False) -> None:
             run(["git", "pull"], cwd=e.path)
         if not e.py.exists() or DRY_RUN:
             run([uv, "venv", e.venv, "--python", e.python])
-        pip = [uv, "pip", "install", "--python", e.py]
-        run(pip + e.torch)
-        for step in e.install:
-            if run(pip + step, cwd=e.path) != 0:
-                print(f"!! step failed for {key}: {_fmt(step)} (continuing)")
-        run(pip + ["huggingface_hub"])
+        for cmd, cwd in install_steps(e, uv):
+            if run(cmd, cwd=cwd) != 0:
+                print(f"!! step failed for {key}: {_fmt(cmd)} (continuing)")
     print("\nDone. Next:  python -m remix download")
+
+
+def install_steps(e: Engine, uv: str = "uv") -> list[tuple[list, Path]]:
+    """Package installs for one engine, in order. Shared by local setup and the cloud image."""
+    pip = [uv, "pip", "install", "--python", e.py]
+    steps = [(pip + e.torch, e.path)]
+    steps += [(pip + step, e.path) for step in e.install]
+    steps.append((pip + ["huggingface_hub"], e.path))
+    return steps
 
 
 # ---------------------------------------------------------------- models
 def download(names: list[str]) -> None:
-    from huggingface_hub import snapshot_download  # orchestrator dependency
-
-    MODELS_DIR.mkdir(exist_ok=True)
+    if not DRY_RUN:
+        from huggingface_hub import snapshot_download  # orchestrator dependency
+        MODELS_DIR.mkdir(exist_ok=True)
     for name in names:
         m = MODELS[name]
         target = MODELS_DIR / m.key
