@@ -1,0 +1,11 @@
+# 5 AI use cases that pay off fastest in finance [en] presenter=tal
+# Original script inspired by the topic of: Smart Finance Day 2: 5 High Impact AI Use Cases for Finance (Christian Martinez) https://www.youtube.com/watch?v=YKp-dakYdUM
+# Lines starting with # are notes and are not spoken.
+If you can only start with five AI use cases in finance, start with these.
+One: month-end commentary. Give AI the numbers and last month's notes, get a first draft of the variance explanations.
+Two: contract and invoice review. Pull payment terms, renewal dates and penalties into a table.
+Three: data cleanup. Messy exports from the ERP, standardized in minutes instead of hours.
+Four: forecasting support. Not the forecast itself, but scenario questions. What happens to cash if collections slip by fifteen days?
+Five: board and management summaries. Turn a forty-page pack into one page of key messages.
+How do you choose where to start? Two questions. How many hours does it save every month, and what is the risk if it's wrong? Start where hours are high and risk is low.
+Which one would save you the most time? Tell me in the comments.

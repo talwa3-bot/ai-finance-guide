@@ -19,7 +19,9 @@ import argparse
 import sys
 
 from . import cloud, heygen, runner
-from .registry import ENGINES, MODELS, VACE_TASKS
+from .registry import ENGINES, MODELS, ROOT, VACE_TASKS
+
+CONTENT = ROOT / "content"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -91,6 +93,16 @@ def main(argv: list[str] | None = None) -> None:
     hr.add_argument("--resolution", help="e.g. 1080p (HeyGen default when omitted)")
     hr.add_argument("--engine", help="override; default picks from the look's supported_api_engines")
     hr.add_argument("--title")
+    hb = hs.add_parser("batch", help="render all catalog scripts with the right presenter and language")
+    hb.add_argument("--catalog", default=str(CONTENT / "catalog.csv"))
+    hb.add_argument("--scripts", default=str(CONTENT / "scripts"))
+    hb.add_argument("--presenters", default=str(CONTENT / "presenters.json"))
+    hb.add_argument("--lang", nargs="+", default=["he", "en"], choices=["he", "en"])
+    hb.add_argument("--ids", nargs="*", help="only these catalog ids, e.g. 01 05")
+    hb.add_argument("--aspect", choices=heygen.ASPECTS, default="9:16")
+    hc = hs.add_parser("captions", help="fetch a YouTube video's English captions as text (source material)")
+    hc.add_argument("url")
+    hc.add_argument("--out", default=str(CONTENT / "sources"))
     hs.add_parser("avatars", help="list your own avatar looks")
     hs.add_parser("voices", help="list your own cloned voices")
     hst = hs.add_parser("status", help="show one video's status")
@@ -154,6 +166,13 @@ def main(argv: list[str] | None = None) -> None:
         elif a.hcmd == "render":
             heygen.render(a.script, a.avatar, a.voice, a.aspect, a.resolution, a.title,
                           a.engine, a.dry_run)
+        elif a.hcmd == "batch":
+            from pathlib import Path
+            heygen.batch(Path(a.catalog), Path(a.scripts), Path(a.presenters), a.lang, a.ids,
+                         a.aspect, a.dry_run)
+        elif a.hcmd == "captions":
+            from pathlib import Path
+            heygen.captions(a.url, Path(a.out), a.dry_run)
         elif a.hcmd == "avatars":
             heygen.print_avatars()
         elif a.hcmd == "voices":

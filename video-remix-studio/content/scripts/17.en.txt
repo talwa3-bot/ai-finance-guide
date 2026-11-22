@@ -1,0 +1,12 @@
+# 5 dashboards every CFO should have [en] presenter=roi
+# Original script inspired by the topic of: 5 Excel Dashboards EVERY CFO Needs (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=9GFSw7xcsvw
+# Lines starting with # are notes and are not spoken.
+Five dashboards every CFO should have.
+One: cash. Opening balance, inflows, outflows, and a thirteen-week forecast. Cash is the first question in every crisis.
+Two: profit and loss versus budget. Monthly and year to date, with the three biggest variances explained.
+Three: receivables. Aging, days sales outstanding, and the top ten overdue customers.
+Four: unit economics. Gross margin by product or customer, so you see where you really make money.
+Five: headcount and payroll. Actual versus plan, open positions, cost per department.
+Keep each dashboard to one screen. If it needs scrolling, it needs editing.
+AI can help you build the first version and write the monthly commentary, but the definitions must be agreed once and never change quietly.
+Which one is missing in your company? Tell me in the comments.

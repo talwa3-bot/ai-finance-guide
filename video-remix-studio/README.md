@@ -131,6 +131,15 @@ python -m remix heygen render source.script.txt --avatar <מזהה> --aspect 9:1
 
 חשוב: כותבים את הרעיון מחדש במילים שלך. לא מעתיקים מילה במילה תוכן של יוצר אחר.
 
+### הרבה סרטונים בבת אחת
+
+הקטלוג, התסריטים וההגדרות של המציגים נמצאים בתיקייה `content/`. ההסבר המלא ב־`content/README.md`.
+
+```bash
+python -m remix --dry-run heygen batch     # מה ירוץ ומה חסום
+python -m remix heygen batch --lang he     # כל הסרטונים בעברית
+```
+
 ## הרצה על שרת גרפי בענן (מודל)
 
 אין כרטיס מסך חזק? אפשר להריץ הכול על שרת בענן של מודל (Modal), ולעבוד גם מהטלפון.

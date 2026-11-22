@@ -1,0 +1,10 @@
+# Variance analysis that explains the why [en] presenter=tal
+# Original script inspired by the topic of: The Variance Analysis Technique Finance Professionals Are Missing (Soufyan Hamid) https://www.youtube.com/watch?v=ZvAodD7SCmA
+# Lines starting with # are notes and are not spoken.
+Most variance analysis says what changed. Very little of it says why.
+Revenue is two hundred thousand below budget. That's not an explanation. That's the question.
+Split it into three drivers. Price: did we sell for less? Volume: did we sell fewer units? Mix: did we sell more of the cheaper products? Now the gap has causes, and every cause has an owner.
+Then filter. Not every variance deserves a paragraph. Set a threshold, for example five percent and a minimum amount, and explain only what crosses it.
+Show it as a waterfall chart, from budget to actual, one bar per driver. Your CFO reads it in ten seconds.
+AI can draft the commentary from the bridge table. Your job is to add what the numbers can't know, like the customer who delayed an order.
+Follow AI Finance for more.

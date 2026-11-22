@@ -164,8 +164,9 @@ def build_request(script: str, avatar_id: str, engine: str, voice_id: str | None
 
 def render(script_file: str, avatar_id: str | None, voice_id: str | None, aspect: str | None,
            resolution: str | None, title: str | None, engine: str | None,
-           dry_run: bool = False, poll_every: int = 15, max_wait: int = 3600) -> Path | None:
-    script = Path(script_file).expanduser().read_text(encoding="utf-8").strip()
+           dry_run: bool = False, poll_every: int = 15, max_wait: int = 3600,
+           dest: Path | None = None) -> Path | None:
+    script = read_script(script_file)
     if not script:
         sys.exit("The script file is empty.")
     avatar_id = avatar_id or os.environ.get("HEYGEN_AVATAR_ID")
@@ -203,7 +204,7 @@ def render(script_file: str, avatar_id: str | None, voice_id: str | None, aspect
         status = st.get("status")
         if status == "completed":
             OUTPUTS_DIR.mkdir(exist_ok=True)
-            dest = OUTPUTS_DIR / f"heygen_{Path(script_file).stem}_{vid}.mp4"
+            dest = dest or OUTPUTS_DIR / f"heygen_{Path(script_file).stem}_{vid}.mp4"
             urllib.request.urlretrieve(st["video_url"], dest)
             print(f"\nResult: {dest}")
             return dest
@@ -217,3 +218,97 @@ def render(script_file: str, avatar_id: str | None, voice_id: str | None, aspect
 
 def status(video_id: str) -> None:
     print(json.dumps(_data(_call("GET", f"/v3/videos/{video_id}")), ensure_ascii=False, indent=2))
+
+
+# ---------------------------------------------------------------- scripts
+def read_script(path: str | Path) -> str:
+    """Script text without comment lines (lines starting with '#' are notes for the editor)."""
+    lines = Path(path).expanduser().read_text(encoding="utf-8").splitlines()
+    return "\n".join(l for l in lines if not l.lstrip().startswith("#")).strip()
+
+
+# ---------------------------------------------------------------- captions (source material)
+def vtt_to_text(vtt: str) -> str:
+    """Plain text from a WebVTT file, collapsing the rolling duplicates of auto captions."""
+    import re
+    out: list[str] = []
+    for line in vtt.splitlines():
+        line = line.strip()
+        if not line or line == "WEBVTT" or "-->" in line or line.startswith(("Kind:", "Language:", "NOTE")):
+            continue
+        line = re.sub(r"<[^>]+>", "", line).strip()
+        if line and (not out or line != out[-1]):
+            out.append(line)
+    return "\n".join(out)
+
+
+def captions(url: str, dest_dir: Path, dry_run: bool = False) -> Path | None:
+    """Fetch a YouTube video's captions (English) as plain text via yt-dlp."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [sys.executable, "-m", "yt_dlp", "-q", "--skip-download", "--write-subs", "--write-auto-subs",
+           "--sub-langs", "en.*,en", "--sub-format", "vtt", "-o", str(dest_dir / "%(id)s"), url]
+    print("$ " + " ".join(cmd))
+    if dry_run:
+        return None
+    if subprocess.call(cmd) != 0:
+        print(f"!! no captions for {url}")
+        return None
+    vtts = sorted(dest_dir.glob("*.vtt"), key=lambda p: p.stat().st_mtime)
+    if not vtts:
+        return None
+    txt = vtts[-1].with_suffix("").with_suffix(".txt")
+    txt.write_text(vtt_to_text(vtts[-1].read_text(encoding="utf-8")) + "\n", encoding="utf-8")
+    print(f"captions -> {txt}")
+    return txt
+
+
+# ---------------------------------------------------------------- batch
+def load_presenters(path: Path) -> dict:
+    if not path.exists():
+        sys.exit(f"Missing {path}. Fill avatar and voice ids from `python -m remix heygen avatars|voices`.")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def batch(catalog: Path, scripts_dir: Path, presenters_file: Path, langs: list[str],
+          ids: list[str] | None, aspect: str, dry_run: bool) -> None:
+    """Render every catalog row that has a script for the requested language(s).
+
+    Skips videos already in outputs/ (safe to re-run after a failure), and refuses a
+    presenter whose consent is not confirmed in presenters.json.
+    """
+    import csv
+    presenters = load_presenters(presenters_file)
+    rows = list(csv.DictReader(catalog.open(encoding="utf-8")))
+    todo, problems = [], []
+    for r in rows:
+        if ids and r["id"] not in ids:
+            continue
+        for lang in langs:
+            if lang not in r["languages"].split("+"):
+                continue
+            script = scripts_dir / f"{r['id']}.{lang}.txt"
+            dest = OUTPUTS_DIR / f"aifinance_{r['id']}_{lang}.mp4"
+            who = presenters.get(r["presenter"], {})
+            if dest.exists():
+                print(f"skip  {dest.name} (already rendered)")
+                continue
+            if not script.exists():
+                problems.append(f"{r['id']}.{lang}: no script at {script}")
+                continue
+            if not who.get("consent_confirmed"):
+                problems.append(f"{r['id']}.{lang}: presenter '{r['presenter']}' consent not confirmed")
+                continue
+            avatar = who.get("avatar_id")
+            voice = (who.get("voices") or {}).get(lang)
+            if not dry_run and not avatar:
+                problems.append(f"{r['id']}.{lang}: presenter '{r['presenter']}' has no avatar_id")
+                continue
+            todo.append((r, lang, script, dest, avatar, voice))
+
+    print(f"\n{len(todo)} video(s) to render, {len(problems)} blocked")
+    for p in problems:
+        print("  blocked:", p)
+    for r, lang, script, dest, avatar, voice in todo:
+        print(f"\n=== {r['id']} [{lang}] {r['presenter']}: {r['title']}")
+        render(str(script), avatar, voice, aspect, None, f"AI Finance - {r['id']} {lang}", None,
+               dry_run=dry_run, dest=dest)

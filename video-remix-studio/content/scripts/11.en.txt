@@ -1,0 +1,10 @@
+# 4 ways finance teams should use Claude [en] presenter=tal
+# Original script inspired by the topic of: Claude for Finance: 4 POWER Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=5YEaZMaEMFQ
+# Lines starting with # are notes and are not spoken.
+Four ways finance teams should be using Claude.
+One: long documents. Give it the full annual report, a loan agreement, or a set of contracts, and ask for covenants, obligations and risks in a table, with page references so you can check.
+Two: spreadsheets. Upload the file and ask it to explain a complex model, find broken formulas, or build a summary sheet.
+Three: artifacts. Ask for a small dashboard or calculator, and it builds one you can use and share.
+Four: projects. Keep your policies, templates and past work in one place, so every answer follows your house style.
+The same rule applies as with any AI tool: work in the approved business version, and verify every number before it leaves your desk.
+Which one would you use first? Tell me in the comments.

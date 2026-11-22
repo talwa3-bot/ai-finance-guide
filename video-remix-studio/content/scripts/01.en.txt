@@ -1,0 +1,12 @@
+# Train your finance team on AI in 30 days [en] presenter=tal
+# Original script inspired by the topic of: How to Train Your Finance Team on AI in 30 Days (Full Guide) (Nicolas Boucher) https://www.youtube.com/watch?v=Qc99kkGVc_E
+# Lines starting with # are notes and are not spoken.
+Most finance teams don't fail at AI because of the tools. They fail because nobody gave them a plan.
+Here's a 30-day plan you can start on Monday.
+Week one: pick one secure tool the company approves, and give everyone the same three starter prompts. Summarize, explain, draft.
+Week two: each person chooses one task they hate. A reconciliation note, a variance comment, a supplier email. They use AI on it every day.
+Week three: share what worked. Fifteen minutes in the team meeting. Save the best prompts in one shared document.
+Week four: measure. Hours saved, errors caught, and what still needs a human check.
+One rule throughout: AI drafts, people sign.
+After thirty days you don't have an AI project. You have a team that uses AI every day.
+Want the template for this plan? Follow AI Finance and comment PLAN.

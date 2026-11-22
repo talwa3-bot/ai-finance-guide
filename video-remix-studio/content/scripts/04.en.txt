@@ -1,0 +1,12 @@
+# The 5 AI habits that matter more than 100 tips [en] presenter=tal
+# Original script inspired by the topic of: 100 SECRET tips on AI for FINANCE (Nicolas Boucher) https://www.youtube.com/watch?v=fXpujvooDt4
+# Lines starting with # are notes and are not spoken.
+You don't need a hundred AI tips. You need five habits you actually use.
+Habit one: always give context. Who you are, who the output is for, and what good looks like.
+Habit two: give it your data, not your memory. Paste the table, upload the file.
+Habit three: ask for the format you need. A table, three bullets, an email under a hundred words.
+Habit four: make it check itself. Ask what assumptions it made and what could be wrong.
+Habit five: save what works. A good prompt you reuse every month is worth more than ten clever ones you forget.
+And one rule above all: never send a number you didn't verify yourself.
+Five habits, every day. That's how finance teams really get faster with AI.
+Which habit are you missing? Tell me in the comments.

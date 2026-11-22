@@ -1,0 +1,14 @@
+{
+  "tal": {
+    "name": "Tal Wallenstein",
+    "consent_confirmed": true,
+    "avatar_id": "",
+    "voices": {"he": "", "en": ""}
+  },
+  "roi": {
+    "name": "Roi",
+    "consent_confirmed": false,
+    "avatar_id": "",
+    "voices": {"he": "", "en": ""}
+  }
+}
