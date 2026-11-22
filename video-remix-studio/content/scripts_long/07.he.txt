@@ -1,0 +1,10 @@
+# Variance analysis that explains the why [he] presenter=tal
+# Original script inspired by the topic of: The Variance Analysis Technique Finance Professionals Are Missing (Soufyan Hamid) https://www.youtube.com/watch?v=ZvAodD7SCmA
+# Lines starting with # are notes and are not spoken.
+רוב ניתוחי הסטיות אומרים מה השתנה. מעט מאוד מהם אומרים למה.
+ההכנסות נמוכות במאתיים אלף שקל מהתקציב. זה לא הסבר. זו השאלה.
+מפרקים לשלושה גורמים. מחיר: מכרנו בזול יותר? כמות: מכרנו פחות יחידות? תמהיל: מכרנו יותר מוצרים זולים? עכשיו לפער יש סיבות, ולכל סיבה יש אחראי.
+אחר כך מסננים. לא כל סטייה שווה פסקה. קובעים סף, למשל חמישה אחוזים וסכום מינימלי, ומסבירים רק מה שעובר אותו.
+מציגים את זה בתרשים מפל, מהתקציב לביצוע, עמודה לכל גורם. סמנכ״ל הכספים קורא את זה בעשר שניות.
+הבינה המלאכותית יכולה לנסח את ההסבר מטבלת הגישור. התפקיד שלכם הוא להוסיף את מה שהמספרים לא יודעים, כמו הלקוח שדחה הזמנה.
+עקבו אחרי AI Finance לעוד.

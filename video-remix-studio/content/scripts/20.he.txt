@@ -1,12 +1,9 @@
-# AI skills: turn your best process into a reusable tool [he] presenter=tal
-# Original script inspired by the topic of: Claude Skills for Finance Are Here and Most People Are Using Them Wrong (Moonshine Capital TV) https://www.youtube.com/watch?v=hXYtY6BYgQk
+# AI skills: turn your best process into a reusable tool [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: Claude Skills for Finance Are Here and Most People Are Using Them Wrong (Moonshine Capital TV) https://www.youtube.com/watch?v=hXYtY6BYgQk
 # Lines starting with # are notes and are not spoken.
-רוב האנשים משתמשים בבינה מלאכותית באותה דרך כל פעם. מקלידים את אותן הוראות, חודש אחרי חודש.
-יש דרך טובה יותר: להפוך את התהליך הכי טוב שלכם לכלי שחוזרים אליו.
-לוקחים תהליך אחד שעושים כל חודש. למשל, הכנת ההסבר לסטיות.
-כותבים אותו פעם אחת. השלבים, הפורמט, הספים, הטון שסמנכ״ל הכספים אוהב, ודוגמה לתוצר מצוין.
-שומרים אותו כמיומנות, או כהוראות בפרויקט, לפי הכלי שאתם עובדים איתו.
-עכשיו כל חודש נותנים רק את המספרים החדשים. אותה איכות, אותו פורמט, בכמה דקות.
-ועוד יותר טוב: כל הצוות משתמש באותו כלי, כך שהתוצר אחיד לא משנה מי הכין אותו.
+תפסיקו להקליד את אותן הוראות כל חודש.
+כותבים פעם אחת את התהליך הכי טוב שלכם: השלבים, הפורמט, הטון ודוגמה מצוינת אחת.
+שומרים אותו כמיומנות או כהוראות בפרויקט.
+מעכשיו כל חודש מוסיפים רק את המספרים החדשים.
+אותה איכות, כל פעם, לא משנה מי מריץ.
 הערך הוא לא בבינה המלאכותית. הוא בתהליך שכתבתם.
-איזה תהליך הייתם הופכים לכלי קבוע קודם? כתבו לי בתגובות.

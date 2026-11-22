@@ -1,13 +1,10 @@
-# The 5 slides for a monthly CFO review [en] presenter=tal
-# Original script inspired by the topic of: The 5 Slides Your CFO Actually Wants to See Every Month (Soufyan Hamid) https://www.youtube.com/watch?v=g9OA6UzbkX4
+# The 5 slides for a monthly CFO review [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: The 5 Slides Your CFO Actually Wants to See Every Month (Soufyan Hamid) https://www.youtube.com/watch?v=g9OA6UzbkX4
 # Lines starting with # are notes and are not spoken.
-Your CFO doesn't want thirty slides every month. They want five.
-Slide one: the headline. Three sentences. What happened, why, and what we're doing about it.
-Slide two: results versus budget. Revenue, gross margin, operating profit, with the main reasons for each gap.
-Slide three: cash. Where it is today, where it will be in three months, and any risk to it.
-Slide four: the forecast. Has the full-year number changed, and why?
-Slide five: decisions needed. What do you need from management this month?
-Everything else goes to the appendix.
-One rule for every slide: the title is the conclusion, not the topic. Not revenue analysis, but revenue missed budget because two deals slipped to next quarter.
-AI can turn your analysis into a first draft of these five slides. You make sure each title is true.
-Follow AI Finance for more.
+Your CFO wants five slides, not thirty.
+The headline: what happened, why, and what's next.
+Results versus budget.
+Cash today and in three months.
+The updated forecast.
+Decisions needed from management.
+And every title is a conclusion, not a topic.

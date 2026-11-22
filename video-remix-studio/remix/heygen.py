@@ -328,49 +328,113 @@ def load_presenters(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def batch(catalog: Path, scripts_dir: Path, presenters_file: Path, langs: list[str],
-          ids: list[str] | None, aspect: str, dry_run: bool) -> None:
-    """Render every catalog row that has a script for the requested language(s).
+WORDS_PER_SECOND = {"he": 2.1, "en": 2.5}   # measured on Tal's voice, Nov 2026
 
-    Skips videos already in outputs/ (safe to re-run after a failure), and refuses a
-    presenter whose consent is not confirmed in presenters.json.
+
+def usage_total() -> float:
+    """Total charged on this key over the last 30 days (GET /v3/usage)."""
+    now = int(time.time())
+    resp = _call("GET", "/v3/usage", query={"start_time": now - 30 * 86400, "end_time": now})
+    return sum(p.get("charged", 0) - p.get("refunded", 0)
+               for row in resp.get("data", []) for p in row.get("pools", []))
+
+
+def ledger_spent(ledger: Path, vid: str) -> float:
+    import csv
+    if not ledger.exists():
+        return 0.0
+    return sum(float(r["cost_usd"]) for r in csv.DictReader(ledger.open(encoding="utf-8"))
+               if r["video"] == vid)
+
+
+def ledger_add(ledger: Path, row: dict) -> None:
+    import csv
+    new = not ledger.exists()
+    with ledger.open("a", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(row))
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
+def batch(catalog: Path, scripts_dir: Path, presenters_file: Path, langs: list[str],
+          ids: list[str] | None, aspect: str | None, dry_run: bool) -> None:
+    """Render every catalog row that has a script, then finish it locally as a Reel.
+
+    - Skips videos already finished in outputs/ (safe to re-run).
+    - Refuses a presenter whose consent is not confirmed.
+    - Looks rotate per video from the presenter's `looks` list.
+    - Budget guard: estimated render cost plus what this video already spent
+      (tests included, from content/costs.csv) must stay under `budget_per_video_usd`.
+    - Each render's real cost is read from GET /v3/usage and logged to costs.csv.
     """
     import csv
+    from .finish import finish
     presenters = load_presenters(presenters_file)
+    ledger = catalog.parent / "costs.csv"
     rows = list(csv.DictReader(catalog.open(encoding="utf-8")))
     todo, problems = [], []
     for r in rows:
         if ids and r["id"] not in ids:
             continue
+        who = presenters.get(r["presenter"])
+        who = who if isinstance(who, dict) else {}
+        looks = who.get("looks") or [{"id": who.get("avatar_id"), "aspect": who.get("aspect")}]
+        look = looks[(int(r["id"]) - 1) % len(looks)]
+        engine = who.get("engine")
+        rate = float(who.get("usd_per_second", 0))
+        budget = float(who.get("budget_per_video_usd", 0))
         for lang in langs:
             if lang not in r["languages"].split("+"):
                 continue
+            vid = f"{r['id']}_{lang}"
             script = scripts_dir / f"{r['id']}.{lang}.txt"
-            dest = OUTPUTS_DIR / f"aifinance_{r['id']}_{lang}.mp4"
-            who = presenters.get(r["presenter"]) or {}
-            who = who if isinstance(who, dict) else {}
-            if dest.exists():
-                print(f"skip  {dest.name} (already rendered)")
+            raw = OUTPUTS_DIR / f"aifinance_{vid}_raw.mp4"
+            reel = OUTPUTS_DIR / f"aifinance_{vid}.mp4"
+            if reel.exists():
+                print(f"skip  {reel.name} (already finished)")
                 continue
             if not script.exists():
-                problems.append(f"{r['id']}.{lang}: no script at {script}")
+                problems.append(f"{vid}: no script at {script}")
                 continue
             if not who.get("consent_confirmed"):
-                problems.append(f"{r['id']}.{lang}: presenter '{r['presenter']}' consent not confirmed")
+                problems.append(f"{vid}: presenter '{r['presenter']}' consent not confirmed")
                 continue
-            avatar = who.get("avatar_id")
-            voice = (who.get("voices") or {}).get(lang)
-            if not dry_run and not avatar:
-                problems.append(f"{r['id']}.{lang}: presenter '{r['presenter']}' has no avatar_id")
+            if not look.get("id"):
+                problems.append(f"{vid}: presenter '{r['presenter']}' has no look id")
                 continue
-            todo.append((r, lang, script, dest, avatar, voice))
+            words = len(read_script(script).split())
+            est_s = words / WORDS_PER_SECOND.get(lang, 2.2)
+            est = est_s * rate * 1.15
+            spent = ledger_spent(ledger, vid)
+            if not raw.exists() and budget and spent + est > budget:
+                problems.append(f"{vid}: estimate ${est:.2f} + spent ${spent:.2f} > budget ${budget:.2f}")
+                continue
+            todo.append((r, lang, vid, script, raw, reel, look, engine, who, est_s, est, spent))
 
-    print(f"\n{len(todo)} video(s) to render, {len(problems)} blocked")
+    print(f"\n{len(todo)} video(s) to make, {len(problems)} blocked")
     for p in problems:
         print("  blocked:", p)
-    for r, lang, script, dest, avatar, voice in todo:
-        print(f"\n=== {r['id']} [{lang}] {r['presenter']}: {r['title']}")
-        who = presenters.get(r["presenter"]) or {}
-        render(str(script), avatar, voice, aspect or who.get("aspect") or "auto", None,
-               f"AI Finance - {r['id']} {lang}", None,
-               dry_run=dry_run, dest=dest)
+    for r, lang, vid, script, raw, reel, look, engine, who, est_s, est, spent in todo:
+        print(f"\n=== {vid} look {look.get('label', look['id'])}: {r['title']}  "
+              f"(~{est_s:.0f}s, est ${est:.2f}, spent so far ${spent:.2f})")
+        if not raw.exists():
+            before = None if dry_run else usage_total()
+            render(str(script), look["id"], (who.get("voices") or {}).get(lang),
+                   aspect or look.get("aspect") or "9:16", None, f"AI Finance {vid}", engine,
+                   dry_run=dry_run, dest=raw)
+            if not dry_run:
+                time.sleep(5)
+                cost = round(usage_total() - before, 4)
+                secs = probe_seconds(raw)
+                ledger_add(ledger, {"video": vid, "kind": "render", "engine": engine or "",
+                                    "look": look["id"], "seconds": f"{secs:.1f}", "cost_usd": cost,
+                                    "time": time.strftime("%Y-%m-%d %H:%M")})
+                print(f"cost ${cost:.2f} for {secs:.1f}s; total for {vid}: ${spent + cost:.2f}")
+        finish(str(raw), read_script(script), lang, str(reel), dry_run=dry_run)
+
+
+def probe_seconds(path: Path) -> float:
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                          "default=nw=1:nk=1", str(path)], capture_output=True, text=True).stdout
+    return float(out.strip() or 0)

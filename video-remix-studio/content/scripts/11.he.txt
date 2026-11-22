@@ -1,10 +1,9 @@
-# 4 ways finance teams should use Claude [he] presenter=tal
-# Original script inspired by the topic of: Claude for Finance: 4 POWER Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=5YEaZMaEMFQ
+# 4 ways finance teams should use Claude [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: Claude for Finance: 4 POWER Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=5YEaZMaEMFQ
 # Lines starting with # are notes and are not spoken.
 ארבע דרכים שבהן צוותי כספים צריכים לעבוד עם קלוד.
-אחת: מסמכים ארוכים. נותנים לו את הדוח השנתי המלא, הסכם הלוואה או סדרת חוזים, ומבקשים את התניות, ההתחייבויות והסיכונים בטבלה, עם הפניה לעמוד כדי שתוכלו לבדוק.
-שתיים: גיליונות אלקטרוניים. מעלים את הקובץ ומבקשים להסביר מודל מסובך, למצוא נוסחאות שבורות, או לבנות גיליון סיכום.
-שלוש: כלים קטנים. מבקשים לוח בקרה או מחשבון, והוא בונה כלי שאפשר להשתמש בו ולשתף.
-ארבע: פרויקטים. שומרים במקום אחד את הנהלים, התבניות והעבודות הקודמות, כך שכל תשובה תואמת את הסגנון שלכם.
-והכלל זהה לכל כלי: עובדים בגרסה העסקית המאושרת, ובודקים כל מספר לפני שהוא יוצא מהשולחן.
-באיזו דרך תתחילו? כתבו לי בתגובות.
+מסמכים ארוכים: התניות והתחייבויות בטבלה, עם הפניה לעמוד.
+גיליונות: להסביר מודל ולמצוא נוסחאות שבורות.
+כלים קטנים: מחשבון או לוח בקרה שאפשר לשתף.
+פרויקטים: הנהלים והתבניות שלכם במקום אחד.
+עובדים בגרסה המאושרת, ובודקים כל מספר.

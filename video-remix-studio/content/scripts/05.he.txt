@@ -1,10 +1,9 @@
-# Cohort analysis in Excel in plain words [he] presenter=roi
-# Original script inspired by the topic of: Make a Cohort Analysis in Excel (Kenji Explains) https://www.youtube.com/watch?v=GOLv8xbd6t0
+# Cohort analysis in Excel in plain words [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: Make a Cohort Analysis in Excel (Kenji Explains) https://www.youtube.com/watch?v=GOLv8xbd6t0
 # Lines starting with # are notes and are not spoken.
 ממוצעים משקרים. קבוצות לקוחות לא.
-ניתוח קבוצות מחלק את הלקוחות לפי החודש שבו הצטרפו, ועוקב אחרי כל קבוצה לאורך זמן.
-למה זה חשוב? נניח שסך ההכנסות גדל. נראה מצוין. אבל טבלת הקבוצות מראה שכל קבוצה חדשה נשארת פחות זמן מהקודמת. הצמיחה מסתירה בעיה של שימור לקוחות.
-באקסל זה שלושה שלבים. אחד: לכל לקוח מוצאים את חודש הרכישה הראשון. שתיים: לכל עסקה מחשבים כמה חודשים עברו מאז. שלוש: בונים טבלת ציר, הקבוצות בשורות, החודשים מאז ההצטרפות בעמודות, ומציגים את אחוז הלקוחות שעדיין פעילים.
-מוסיפים צביעה לפי ערכים, והתבנית קופצת לעין.
-הבינה המלאכותית יכולה לכתוב לכם את הנוסחאות, אבל אתם מחליטים מה נחשב לקוח פעיל.
-עקבו אחרי AI Finance לעוד כלים מעשיים.
+מחלקים את הלקוחות לפי חודש ההצטרפות, ועוקבים אחרי כל קבוצה לאורך זמן.
+סך ההכנסות יכול לגדול, בזמן שכל קבוצה חדשה נשארת פחות זמן.
+באקסל: חודש רכישה ראשון, חודשים מאז ההצטרפות, וטבלת ציר אחת עם צביעה.
+הבינה המלאכותית כותבת את הנוסחאות. אתם מגדירים מי נחשב לקוח פעיל.
+עקבו אחרי AI Finance לעוד.

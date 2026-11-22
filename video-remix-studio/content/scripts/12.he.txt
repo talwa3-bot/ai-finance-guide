@@ -1,12 +1,9 @@
-# Copilot inside the Microsoft tools you already use [he] presenter=tal
-# Original script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
+# Copilot inside the Microsoft tools you already use [he] Instagram Reel, look 4
+# Original short script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
 # Lines starting with # are notes and are not spoken.
-אם החברה שלכם עובדת עם מיקרוסופט, קופיילוט כבר יושב בתוך הכלים שאתם משתמשים בהם כל יום. הנה חמישה מהלכים לכספים.
-אחד: באקסל, מבקשים להסביר נוסחה, לסמן חריגים, או לבנות טבלת ציר מטבלה מבולגנת.
-שתיים: בדואר, מסכמים שרשור ארוך עם ספק ומנסחים תשובה.
-שלוש: בפגישות, מקבלים את ההחלטות והמשימות מישיבת התקציב שפספסתם.
-ארבע: במסמכים, הופכים את הניתוח שלכם למזכר להנהלה עם מבנה ברור.
-חמש: במצגות, בונים טיוטה ראשונה לסקירה החודשית מתוך הסיכום שלכם.
-קופיילוט עובד בתוך גבולות האבטחה של החברה, ולכן זה המקום הכי קל להתחיל בו.
-אבל שלב הבדיקה לא משתנה. אתם בודקים כל מספר וכל משפט לפני שהם יוצאים.
-במה תתחילו? כתבו לי בתגובות.
+אם החברה שלכם עובדת עם מיקרוסופט, קופיילוט כבר שם.
+באקסל: להסביר נוסחאות, למצוא חריגים, לבנות טבלאות ציר.
+בדואר: לסכם שרשור עם ספק ולנסח תשובה.
+בפגישות: ההחלטות מהישיבה שפספסתם.
+במצגות: טיוטה ראשונה לסקירה החודשית.
+ואתם עדיין בודקים כל מספר לפני שהוא יוצא.

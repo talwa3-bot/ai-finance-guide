@@ -1,12 +1,10 @@
-# Building a financial model with AI the safe way [en] presenter=roi
-# Original script inspired by the topic of: How to Use Claude to Build INSANE Financial Models (2026) (Nicolas Boucher) https://www.youtube.com/watch?v=W-tMaaX777I
+# Building a financial model with AI the safe way [en] Instagram Reel, look 3
+# Original short script inspired by the topic of: How to Use Claude to Build INSANE Financial Models (2026) (Nicolas Boucher) https://www.youtube.com/watch?v=W-tMaaX777I
 # Lines starting with # are notes and are not spoken.
-AI can build a financial model in minutes. That's exactly why you need rules.
-Rule one: you write the assumptions. Growth, prices, payment terms. AI builds the structure around them.
-Rule two: ask for a clean layout. Inputs on one sheet, calculations on another, outputs on a third.
-Rule three: no hard-coded numbers inside formulas. Ask for it explicitly, then check.
-Rule four: ask for built-in checks. The balance sheet balances, cash ties to the cash flow, totals match.
-Rule five: test it. Change one assumption and see if the results move the way you expect.
-Used this way, AI saves you hours of setup, and you spend your time where it matters: on the assumptions and the story behind them.
+AI can build a financial model in minutes. That's why you need rules.
+You write the assumptions.
+Inputs, calculations and outputs on separate sheets.
+No hard-coded numbers inside formulas.
+Built-in checks that the model ties.
+Then change one assumption and see if it behaves.
 A model you can't explain is a model you can't defend.
-Follow AI Finance for more.

@@ -1,12 +1,9 @@
-# AI skills: turn your best process into a reusable tool [en] presenter=tal
-# Original script inspired by the topic of: Claude Skills for Finance Are Here and Most People Are Using Them Wrong (Moonshine Capital TV) https://www.youtube.com/watch?v=hXYtY6BYgQk
+# AI skills: turn your best process into a reusable tool [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Claude Skills for Finance Are Here and Most People Are Using Them Wrong (Moonshine Capital TV) https://www.youtube.com/watch?v=hXYtY6BYgQk
 # Lines starting with # are notes and are not spoken.
-Most people use AI the same way every time. They retype the same instructions, month after month.
-There's a better way: turn your best process into a reusable skill.
-Take one process you do every month. For example, preparing the variance commentary.
-Write it down once. The steps, the format, your thresholds, the tone your CFO likes, and an example of a great result.
-Save it as a skill, or as instructions in a project, depending on the tool you use.
-Now every month you just give it the new numbers. Same quality, same format, in minutes.
-Even better: the whole team uses the same skill, so the output is consistent no matter who prepares it.
-The value isn't in the AI. It's in the process you wrote down.
-Which process would you turn into a skill first? Tell me in the comments.
+Stop retyping the same AI instructions every month.
+Write your best process down once: the steps, the format, the tone, and one great example.
+Save it as a skill or as project instructions.
+Now each month you only add the new numbers.
+Same quality, every time, whoever runs it.
+The value isn't the AI. It's the process you wrote.

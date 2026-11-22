@@ -1,12 +1,9 @@
-# Which variances to ignore [en] presenter=tal
-# Original script inspired by the topic of: The Matrix That Tells You Which Variances to Ignore (Soufyan Hamid) https://www.youtube.com/watch?v=rGEGYzo-jfk
+# Which variances to ignore [en] Instagram Reel, look 3
+# Original short script inspired by the topic of: The Matrix That Tells You Which Variances to Ignore (Soufyan Hamid) https://www.youtube.com/watch?v=rGEGYzo-jfk
 # Lines starting with # are notes and are not spoken.
-Not every variance deserves your time. Here's how to decide which ones to ignore.
-Draw a simple matrix. On one axis: how big is the variance? On the other: can anyone actually control it?
-Big and controllable: explain it, assign an owner, agree on an action. This is where your time goes.
-Big but not controllable, like exchange rates or a regulatory change: report it clearly, once, and move on.
-Small but controllable: watch the trend. If it repeats three months in a row, it moves up.
+Not every variance deserves your time.
+Ask two questions: how big is it, and can anyone control it?
+Big and controllable: explain it and assign an owner.
+Big but not controllable: report it once.
+Small and controllable: watch the trend.
 Small and not controllable: ignore it. Really.
-Set the thresholds in advance with your CFO, so nobody argues about it at month-end.
-AI can sort every variance into the matrix in seconds. You decide what to do with the top-right corner.
-Follow AI Finance for more.

@@ -1,12 +1,10 @@
-# Train your finance team on AI in 30 days [he] presenter=tal
-# Original script inspired by the topic of: How to Train Your Finance Team on AI in 30 Days (Full Guide) (Nicolas Boucher) https://www.youtube.com/watch?v=Qc99kkGVc_E
+# Train your finance team on AI in 30 days [he] Instagram Reel, look 3
+# Original short script inspired by the topic of: How to Train Your Finance Team on AI in 30 Days (Full Guide) (Nicolas Boucher) https://www.youtube.com/watch?v=Qc99kkGVc_E
 # Lines starting with # are notes and are not spoken.
-רוב צוותי הכספים לא נכשלים בבינה מלאכותית בגלל הכלים. הם נכשלים כי אף אחד לא נתן להם תוכנית.
-הנה תוכנית של שלושים יום שאפשר להתחיל ביום ראשון.
-שבוע ראשון: בוחרים כלי אחד מאובטח שהחברה מאשרת, ונותנים לכולם שלוש פקודות פתיחה זהות. לסכם, להסביר, לנסח.
-שבוע שני: כל אחד בוחר משימה אחת שהוא שונא. הערה להתאמה, הסבר לסטייה, מייל לספק. ומשתמש בבינה מלאכותית עליה כל יום.
-שבוע שלישי: משתפים מה עבד. רבע שעה בישיבת הצוות. שומרים את הפקודות הטובות במסמך משותף אחד.
-שבוע רביעי: מודדים. כמה שעות נחסכו, אילו טעויות נתפסו, ומה עדיין דורש בדיקה של אדם.
-כלל אחד לאורך כל הדרך: הבינה המלאכותית מנסחת, האדם חותם.
-אחרי שלושים יום אין לכם פרויקט. יש לכם צוות שעובד עם בינה מלאכותית כל יום.
-רוצים את התבנית של התוכנית? עקבו אחרי AI Finance וכתבו בתגובות: תוכנית.
+לצוות הכספים שלכם לא חסרים כלים. חסרה לו תוכנית לשלושים יום.
+שבוע ראשון: כלי אחד מאושר ושלוש פקודות משותפות.
+שבוע שני: כל אחד מעביר לבינה מלאכותית משימה אחת שהוא שונא.
+שבוע שלישי: משתפים מה עבד.
+שבוע רביעי: מודדים כמה שעות נחסכו.
+כלל אחד: הבינה המלאכותית מנסחת, האדם חותם.
+עקבו אחרי AI Finance לתוכנית המלאה.

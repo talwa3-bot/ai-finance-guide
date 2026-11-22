@@ -1,0 +1,13 @@
+# 7 financial models and when to use each [en] presenter=roi
+# Original script inspired by the topic of: 7 Types of Financial Models Explained (Bojan Radojicic) https://www.youtube.com/watch?v=gfN7FDNvZIM
+# Lines starting with # are notes and are not spoken.
+There isn't one financial model. There are seven, and each answers a different question.
+One: the three-statement model. Income statement, balance sheet and cash flow, linked. The base for almost everything.
+Two: the budget model. What do we plan to spend and earn next year?
+Three: the forecast model. Given what we know today, where will we land?
+Four: the discounted cash flow model. What is the business worth?
+Five: the M and A model. Does this acquisition create value for us?
+Six: the leveraged buyout model. How much debt can this deal carry?
+Seven: the project evaluation model. Should we invest in this project at all?
+Before you build anything, write down the decision the model supports. That decides the model, the level of detail, and the time it deserves.
+Which one do you build most often? Tell me in the comments.

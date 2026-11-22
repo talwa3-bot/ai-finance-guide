@@ -1,10 +1,10 @@
-# 3 analysis methods every finance pro uses [en] presenter=roi
-# Original script inspired by the topic of: Financial Analysis Made Simple: 3 Methods Top Professionals Use Daily (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=E4NSAQ-Z7II
+# 3 analysis methods every finance pro uses [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: Financial Analysis Made Simple: 3 Methods Top Professionals Use Daily (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=E4NSAQ-Z7II
 # Lines starting with # are notes and are not spoken.
-Every strong financial analysis starts with three simple methods.
-Method one: horizontal analysis. Compare the same line over time. Revenue up twelve percent is a fact. Revenue up twelve percent while receivables grew thirty is a story.
-Method two: vertical analysis. Show every line as a percentage of revenue. Suddenly you see that marketing went from eight to eleven percent of sales.
-Method three: ratios. Margins, liquidity, days sales outstanding, return on capital. They connect the income statement to the balance sheet.
-Here's where AI helps. Give it the statements and ask for all three methods as a first pass, with the five lines that moved the most. You still check every number, but you start from insight, not from a blank sheet.
-The numbers tell you what happened. These three methods tell you why.
+Three methods behind every good financial analysis.
+Horizontal: the same line over time.
+Vertical: every line as a percentage of revenue.
+Ratios: margins, liquidity, days to collect.
+Ask AI for all three as a first pass, plus the five lines that moved the most.
+You still verify every number, but you start from insight.
 Follow AI Finance for more.

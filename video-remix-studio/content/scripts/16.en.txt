@@ -1,11 +1,10 @@
-# How to start learning AI as a finance pro [en] presenter=tal
-# Original script inspired by the topic of: How to start learning AI for Finance and FP&A in 2026 ((verify channel)) https://www.youtube.com/watch?v=StmIlQ37nMg
+# How to start learning AI as a finance pro [en] Instagram Reel, look 3
+# Original short script inspired by the topic of: How to start learning AI for Finance and FP&A in 2026 ((verify channel)) https://www.youtube.com/watch?v=StmIlQ37nMg
 # Lines starting with # are notes and are not spoken.
-Want to start learning AI as a finance professional? Don't start with a course. Start with a task.
-Step one: pick one real task from your week. A variance comment, a reconciliation note, a summary for your manager.
-Step two: do it with AI every time it comes up, for one month. Write down what worked and what didn't.
-Step three: learn the basics around it. How to give context, how to check output, what data you may and may not share.
-After one month you'll know more than after ten videos, because you learned on your own numbers.
-Then pick the next task. That's the whole method.
-And if you want to learn with other finance people who are doing the same, join the AI Finance community.
-What's the first task you'll try? Tell me in the comments.
+Want to learn AI in finance? Don't start with a course.
+Start with one real task from your week.
+Do it with AI every time, for a month.
+Write down what worked.
+Then pick the next task.
+You'll learn more from your own numbers than from ten videos.
+What's your first task? Tell me in the comments.

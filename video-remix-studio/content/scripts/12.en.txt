@@ -1,12 +1,9 @@
-# Copilot inside the Microsoft tools you already use [en] presenter=tal
-# Original script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
+# Copilot inside the Microsoft tools you already use [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
 # Lines starting with # are notes and are not spoken.
-If your company runs on Microsoft, Copilot is already sitting inside the tools you use every day. Here are five finance moves.
-One: in Excel, ask it to explain a formula, highlight outliers, or build a pivot from a messy table.
-Two: in Outlook, summarize a long email thread with a supplier and draft the reply.
-Three: in Teams, get the decisions and action items from the budget meeting you missed.
-Four: in Word, turn your analysis into a management memo with a clear structure.
-Five: in PowerPoint, build the first draft of the monthly review from your summary.
-Copilot works inside your company's security boundary, which makes it the easiest place to start.
-But the review step doesn't change. You check every number and every sentence before it goes out.
-Which one would you start with? Tell me in the comments.
+If your company runs on Microsoft, Copilot is already there.
+In Excel: explain formulas, find outliers, build pivots.
+In Outlook: summarize the supplier thread and draft a reply.
+In Teams: the decisions from the meeting you missed.
+In PowerPoint: the first draft of the monthly review.
+You still check every number before it goes out.

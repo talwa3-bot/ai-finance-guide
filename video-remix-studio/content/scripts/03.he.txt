@@ -1,10 +1,10 @@
-# 3 analysis methods every finance pro uses [he] presenter=roi
-# Original script inspired by the topic of: Financial Analysis Made Simple: 3 Methods Top Professionals Use Daily (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=E4NSAQ-Z7II
+# 3 analysis methods every finance pro uses [he] Instagram Reel, look 4
+# Original short script inspired by the topic of: Financial Analysis Made Simple: 3 Methods Top Professionals Use Daily (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=E4NSAQ-Z7II
 # Lines starting with # are notes and are not spoken.
-כל ניתוח פיננסי טוב מתחיל בשלוש שיטות פשוטות.
-שיטה ראשונה: ניתוח אופקי. משווים את אותה שורה לאורך זמן. הכנסות שעלו בשנים עשר אחוז זו עובדה. הכנסות שעלו בשנים עשר אחוז בזמן שהלקוחות גדלו בשלושים אחוז, זה כבר סיפור.
-שיטה שנייה: ניתוח אנכי. מציגים כל שורה כאחוז מההכנסות. פתאום רואים שהשיווק עלה משמונה לאחד עשר אחוז מהמכירות.
-שיטה שלישית: יחסים פיננסיים. רווחיות, נזילות, ימי אשראי לקוחות, תשואה על ההון. הם מחברים בין דוח רווח והפסד למאזן.
-וכאן הבינה המלאכותית עוזרת. נותנים לה את הדוחות ומבקשים את שלוש השיטות כמעבר ראשון, עם חמש השורות שזזו הכי הרבה. אתם עדיין בודקים כל מספר, אבל מתחילים מתובנה ולא מדף ריק.
-המספרים אומרים מה קרה. שלוש השיטות האלה אומרות למה.
+שלוש שיטות שעומדות מאחורי כל ניתוח פיננסי טוב.
+אופקי: אותה שורה לאורך זמן.
+אנכי: כל שורה כאחוז מההכנסות.
+יחסים: רווחיות, נזילות, ימי גבייה.
+מבקשים מהבינה המלאכותית את שלושתן כמעבר ראשון, ואת חמש השורות שזזו הכי הרבה.
+אתם עדיין בודקים כל מספר, אבל מתחילים מתובנה.
 עקבו אחרי AI Finance לעוד.

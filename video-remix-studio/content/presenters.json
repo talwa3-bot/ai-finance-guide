@@ -2,15 +2,39 @@
   "tal": {
     "name": "Tal Wallenstein",
     "consent_confirmed": true,
-    "avatar_id": "76ccb27976bb42f6866c2822f4ef4773",
+    "avatar_id": "5df8597634f64beea7062725fb4c51a7",
     "avatar_note": "Tal Wallenstein in the office (grey blazer). Alternative: 6e98e6141a3541f9a2ff0f09c92a4b26 (black polo).",
     "voices": {
       "he": "273c988ba7d7431399a2c153ca6e4b6e",
       "en": "273c988ba7d7431399a2c153ca6e4b6e"
     },
     "voice_note": "'tal v' instant clone, default voice on Tal's looks. Other Tal clones: 178e7a36635d4c01b9176e652e5925a1, 1ab5831d44a94668b7bfda4450096f71.",
-    "aspect": "16:9",
-    "aspect_note": "Look 76cc... is landscape; 9:16 adds white bars. Use a vertical look for Reels."
+    "aspect": "9:16",
+    "aspect_note": "Look 76cc... is landscape; 9:16 adds white bars. Use a vertical look for Reels.",
+    "engine": "avatar_iii",
+    "usd_per_second": 0.0171,
+    "rate_note": "Measured Nov 2026: avatar_iii 6.8 s cost $0.1167; heygen-avatar-6 5.4 s cost $0.50.",
+    "budget_per_video_usd": 1.5,
+    "looks": [
+      {
+        "label": "3",
+        "id": "496216089094426aba575d3c1a583bef",
+        "aspect": "1:1",
+        "note": "navy blazer, grey studio (square; finished on a blurred vertical background)"
+      },
+      {
+        "label": "23",
+        "id": "5df8597634f64beea7062725fb4c51a7",
+        "aspect": "9:16",
+        "note": "white shirt, close-up, vertical"
+      },
+      {
+        "label": "4",
+        "id": "57e523aee0d64544a164fa5ffa086c3d",
+        "aspect": "9:16",
+        "note": "selfie, cream cardigan, vertical"
+      }
+    ]
   },
   "roi": {
     "name": "Roi Wallenstein",

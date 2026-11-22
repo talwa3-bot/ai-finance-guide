@@ -1,12 +1,10 @@
-# Build a finance app without writing code [en] presenter=roi
-# Original script inspired by the topic of: Vibe Coding for Finance: How to create a Financial Analysis App with AI (Christian Martinez) https://www.youtube.com/watch?v=mplYk-IfQvo
+# Build a finance app without writing code [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Vibe Coding for Finance: How to create a Financial Analysis App with AI (Christian Martinez) https://www.youtube.com/watch?v=mplYk-IfQvo
 # Lines starting with # are notes and are not spoken.
-You can build a finance app today without writing a single line of code.
-It's called vibe coding. You describe the tool you want in plain language, and an AI builds it.
-Example: a variance dashboard. Upload a budget file and an actuals file, show the gaps by department, flag anything above five percent, and draft a comment for each.
-Three rules before you start.
-One: use sample or anonymized data until the tool is approved. Never upload client or payroll data to a tool your company hasn't cleared.
-Two: test it against numbers you already know. If the app says marketing is over budget, check it in the source file.
-Three: keep it small. Internal helpers, not the general ledger.
-Vibe coding won't replace your systems. It replaces the spreadsheet you rebuild every month.
+You can build a finance app without writing code.
+Describe the tool in plain words, and AI builds it.
+Three rules.
+Use sample data until the tool is approved.
+Test it against numbers you already know.
+Keep it small: helpers, not your ledger.
 What would you build first? Tell me in the comments.

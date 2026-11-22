@@ -1,13 +1,9 @@
-# 7 financial models and when to use each [he] presenter=roi
-# Original script inspired by the topic of: 7 Types of Financial Models Explained (Bojan Radojicic) https://www.youtube.com/watch?v=gfN7FDNvZIM
+# 7 financial models and when to use each [he] Instagram Reel, look 4
+# Original short script inspired by the topic of: 7 Types of Financial Models Explained (Bojan Radojicic) https://www.youtube.com/watch?v=gfN7FDNvZIM
 # Lines starting with # are notes and are not spoken.
-אין מודל פיננסי אחד. יש שבעה, וכל אחד עונה על שאלה אחרת.
-אחד: מודל שלושת הדוחות. רווח והפסד, מאזן ותזרים, מקושרים זה לזה. הבסיס כמעט לכל דבר.
-שתיים: מודל תקציב. כמה אנחנו מתכננים להוציא ולהכניס בשנה הבאה?
-שלוש: מודל תחזית. לפי מה שידוע היום, איפה ננחת?
-ארבע: מודל היוון תזרימי מזומנים. כמה שווה העסק?
-חמש: מודל מיזוגים ורכישות. האם הרכישה הזאת יוצרת לנו ערך?
-שש: מודל רכישה ממונפת. כמה חוב העסקה הזאת יכולה לשאת?
-שבע: מודל להערכת פרויקט. האם בכלל כדאי להשקיע בפרויקט הזה?
-לפני שבונים משהו, כותבים את ההחלטה שהמודל אמור לשרת. היא קובעת את סוג המודל, את רמת הפירוט, ואת הזמן שהוא שווה.
-איזה מהם אתם בונים הכי הרבה? כתבו לי בתגובות.
+אין מודל פיננסי אחד. יש שבעה.
+שלושה דוחות, תקציב, תחזית, הערכת שווי, מיזוגים ורכישות, רכישה ממונפת, והערכת פרויקט.
+כל אחד עונה על שאלה אחרת.
+אז לפני שבונים, כותבים איזו החלטה המודל אמור לשרת.
+ההחלטה קובעת את סוג המודל, את רמת הפירוט, ואת הזמן שהוא שווה.
+עקבו אחרי AI Finance לעוד.

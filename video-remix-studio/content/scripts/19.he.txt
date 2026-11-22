@@ -1,12 +1,9 @@
-# Which variances to ignore [he] presenter=tal
-# Original script inspired by the topic of: The Matrix That Tells You Which Variances to Ignore (Soufyan Hamid) https://www.youtube.com/watch?v=rGEGYzo-jfk
+# Which variances to ignore [he] Instagram Reel, look 3
+# Original short script inspired by the topic of: The Matrix That Tells You Which Variances to Ignore (Soufyan Hamid) https://www.youtube.com/watch?v=rGEGYzo-jfk
 # Lines starting with # are notes and are not spoken.
-לא כל סטייה שווה את הזמן שלכם. הנה איך מחליטים מה להתעלם ממנו.
-משרטטים מטריצה פשוטה. בציר אחד: כמה גדולה הסטייה? בציר השני: האם מישהו באמת יכול לשלוט בה?
-גדולה ובשליטה: מסבירים, ממנים אחראי, ומסכמים פעולה. לכאן הולך הזמן שלכם.
-גדולה ולא בשליטה, כמו שער חליפין או שינוי רגולציה: מדווחים בבהירות, פעם אחת, וממשיכים.
-קטנה ובשליטה: עוקבים אחרי המגמה. אם היא חוזרת שלושה חודשים ברצף, היא עולה מדרגה.
+לא כל סטייה שווה את הזמן שלכם.
+שואלים שתי שאלות: כמה היא גדולה, והאם מישהו שולט בה?
+גדולה ובשליטה: מסבירים וממנים אחראי.
+גדולה ולא בשליטה: מדווחים פעם אחת.
+קטנה ובשליטה: עוקבים אחרי המגמה.
 קטנה ולא בשליטה: מתעלמים. באמת.
-קובעים את הספים מראש עם סמנכ״ל הכספים, כדי שאף אחד לא יתווכח עליהם בסגירת החודש.
-הבינה המלאכותית יכולה למיין כל סטייה למטריצה בשניות. אתם מחליטים מה עושים עם הפינה החשובה.
-עקבו אחרי AI Finance לעוד.

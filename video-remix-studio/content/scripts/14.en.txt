@@ -1,11 +1,10 @@
-# Copilot in Excel: 5 finance tasks [en] presenter=roi
-# Original script inspired by the topic of: How to Use Copilot in Excel For Finance (5 INSANE Use Cases) ((verify channel)) https://www.youtube.com/watch?v=s5xIJgJcpTk
+# Copilot in Excel: 5 finance tasks [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: How to Use Copilot in Excel For Finance (5 INSANE Use Cases) ((verify channel)) https://www.youtube.com/watch?v=s5xIJgJcpTk
 # Lines starting with # are notes and are not spoken.
-Five finance tasks Copilot can do in Excel today.
-One: clean data. Split columns, fix dates, remove duplicates from an ERP export, just by asking.
-Two: write formulas. Describe what you need, for example sum of sales by customer for the last quarter, and get the formula with an explanation.
-Three: build pivots and charts. Ask for revenue by region and month, and get the table and the chart.
-Four: find outliers. Ask which expenses are unusual compared to the last six months.
-Five: draft commentary. Ask for three key insights from the table to start your management note.
-Two tips. Format your data as a table first, because Copilot works best on structured data. And check every formula it writes before you build on it.
-Which task takes most of your time today? Tell me in the comments.
+Five finance tasks Copilot does in Excel today.
+Clean messy exports.
+Write formulas from plain words.
+Build pivots and charts.
+Flag unusual expenses.
+Draft the key insights for your management note.
+Tip: format your data as a table first, and check every formula it writes.
