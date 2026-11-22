@@ -8,6 +8,7 @@
   wangp     open the WanGP studio, or process a saved WanGP queue headless
   ui        one web interface for all of the above
   cloud     deploy / download models / get the UI address on a cloud GPU (Modal)
+  heygen    "make it mine": transcribe a video, then render your script with your HeyGen avatar
 
 Add --cloud before edit/generate to run that job on a cloud GPU instead of here:
   python -m remix --cloud edit --task depth --video in.mp4 --prompt "..."
@@ -17,7 +18,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from . import cloud, runner
+from . import cloud, heygen, runner
 from .registry import ENGINES, MODELS, VACE_TASKS
 
 
@@ -76,6 +77,25 @@ def main(argv: list[str] | None = None) -> None:
                    help="deploy the app / download weights into the cloud / print the UI address")
     c.add_argument("models", nargs="*", help="for 'models': which weights (default: 1.3B + annotators)")
 
+    h = sub.add_parser("heygen", help="transcribe a source video / render a script with your HeyGen avatar")
+    hs = h.add_subparsers(dest="hcmd", required=True)
+    ht = hs.add_parser("transcribe", help="source video -> outputs/<name>.transcript.txt")
+    ht.add_argument("video")
+    ht.add_argument("--model", default="small", help="faster-whisper model: tiny/base/small/medium/large-v3")
+    ht.add_argument("--language", help="force a language code, e.g. he or en (default: auto)")
+    hr = hs.add_parser("render", help="script text file -> HeyGen avatar video in outputs/")
+    hr.add_argument("script", help="UTF-8 text file with the final script")
+    hr.add_argument("--avatar", help="avatar look id (default: env HEYGEN_AVATAR_ID)")
+    hr.add_argument("--voice", help="voice id (default: env HEYGEN_VOICE_ID, else the look's default)")
+    hr.add_argument("--aspect", choices=heygen.ASPECTS, default="9:16")
+    hr.add_argument("--resolution", help="e.g. 1080p (HeyGen default when omitted)")
+    hr.add_argument("--engine", help="override; default picks from the look's supported_api_engines")
+    hr.add_argument("--title")
+    hs.add_parser("avatars", help="list your own avatar looks")
+    hs.add_parser("voices", help="list your own cloned voices")
+    hst = hs.add_parser("status", help="show one video's status")
+    hst.add_argument("video_id")
+
     a = p.parse_args(argv)
     runner.DRY_RUN = a.dry_run
     extra = [x for x in getattr(a, "extra", []) or [] if x != "--"]
@@ -128,6 +148,18 @@ def main(argv: list[str] | None = None) -> None:
     elif a.cmd == "ui":
         from .ui import launch
         launch(a.port, a.share, a.host)
+    elif a.cmd == "heygen":
+        if a.hcmd == "transcribe":
+            heygen.transcribe(a.video, a.model, a.language, a.dry_run)
+        elif a.hcmd == "render":
+            heygen.render(a.script, a.avatar, a.voice, a.aspect, a.resolution, a.title,
+                          a.engine, a.dry_run)
+        elif a.hcmd == "avatars":
+            heygen.print_avatars()
+        elif a.hcmd == "voices":
+            heygen.print_voices()
+        else:
+            heygen.status(a.video_id)
     elif a.cmd == "cloud":
         if a.action == "deploy":
             sys.exit(cloud.deploy(a.dry_run))

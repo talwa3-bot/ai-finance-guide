@@ -18,6 +18,7 @@ One project that unifies three open-source video engines behind one CLI and one 
 - `remix/__main__.py` - CLI (`python -m remix ...`).
 - `remix/ui.py` - Gradio UI, Hebrew RTL labels, port 7870 (WanGP keeps its own 7860). `--host 0.0.0.0` / `--share` require `REMIX_UI_PASSWORD`.
 - `remix/cloud.py` - cloud client: rewrites file args to remote paths, calls the deployed Modal function, saves the video to `outputs/`. Imports `modal` lazily (dry-run needs no account).
+- `remix/heygen.py` - "make it mine": `heygen transcribe` (ffmpeg -> 16 kHz wav -> faster-whisper on CPU, samples passed as numpy to avoid a PyAV incompatibility), `heygen render` (HeyGen API v3: POST /v3/videos, poll GET /v3/videos/{id}, download data.video_url), `heygen avatars|voices|status`. Header X-Api-Key from env HEYGEN_API_KEY. Engine chosen from the look's `supported_api_engines` (prefers heygen-avatar-6). Endpoints verified against developers.heygen.com, Nov 2026.
 - `cloud/modal_app.py` - Modal app. Image is generated from `registry.py` + `runner.install_steps` (one venv per engine, same as local setup). Volumes `remix-models`, `remix-outputs`. Functions: `run_job` (GPU per call), `download_models`, `ui` (web server, secret `remix-ui`).
 
 ## Commands
@@ -30,6 +31,7 @@ python -m remix --dry-run edit --task depth --video in.mp4 --prompt "..."   # pr
 python -m remix ui
 python -m remix --dry-run --cloud edit --task depth --video in.mp4 --prompt "..."   # cloud plan
 python -m remix cloud deploy|models|url
+python -m remix heygen transcribe in.mp4 ; python -m remix --dry-run heygen render in.script.txt
 ```
 
 ## Verified engine arguments (checked against source, Nov 2026)

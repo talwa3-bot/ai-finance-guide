@@ -104,6 +104,33 @@ python -m remix edit --task pose --video in.mp4 --prompt "..." -- --sample_steps
 python -m remix --dry-run edit --task depth --video in.mp4 --prompt "test"
 ```
 
+## להפוך סרטון לשלך עם הייג׳ן
+
+לוקחים סרטון קיים, מחלצים ממנו את הטקסט, כותבים אותו מחדש במילים שלך,
+והאווטאר שלך בהייג׳ן מציג אותו בקול שלך.
+
+### הכנה (פעם אחת)
+
+```bash
+pip install faster-whisper          # תמלול מקומי, עובד גם בלי כרטיס מסך
+export HEYGEN_API_KEY=המפתח-שלך       # מהייג׳ן: הגדרות, ממשק תכנות
+python -m remix heygen avatars      # רשימת האווטארים שלך, מעתיקים את המזהה
+python -m remix heygen voices       # רשימת הקולות המשובטים שלך
+```
+
+### לכל סרטון
+
+```bash
+python -m remix heygen transcribe source.mp4            # יוצר outputs/source.transcript.txt
+# כותבים את התסריט החדש בקובץ, למשל source.script.txt
+python -m remix heygen render source.script.txt --avatar <מזהה> --aspect 9:16
+```
+
+התוצאה יורדת לתיקייה `outputs/`. ברירת המחדל היא סרטון אנכי לרשתות (9:16).
+לבדיקה בלי לשלוח כלום להייג׳ן: `python -m remix --dry-run heygen render source.script.txt`
+
+חשוב: כותבים את הרעיון מחדש במילים שלך. לא מעתיקים מילה במילה תוכן של יוצר אחר.
+
 ## הרצה על שרת גרפי בענן (מודל)
 
 אין כרטיס מסך חזק? אפשר להריץ הכול על שרת בענן של מודל (Modal), ולעבוד גם מהטלפון.

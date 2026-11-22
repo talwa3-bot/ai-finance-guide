@@ -4,3 +4,5 @@ huggingface_hub>=0.24
 uv>=0.4
 # Optional, only for the cloud GPU runner (python -m remix --cloud / cloud ...):
 # modal>=1.0
+# Optional, only for `heygen transcribe`:
+# faster-whisper>=1.1
