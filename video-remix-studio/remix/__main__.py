@@ -99,10 +99,14 @@ def main(argv: list[str] | None = None) -> None:
     hb.add_argument("--presenters", default=str(CONTENT / "presenters.json"))
     hb.add_argument("--lang", nargs="+", default=["he", "en"], choices=["he", "en"])
     hb.add_argument("--ids", nargs="*", help="only these catalog ids, e.g. 01 05")
-    hb.add_argument("--aspect", choices=heygen.ASPECTS, default="9:16")
+    hb.add_argument("--aspect", choices=heygen.ASPECTS,
+                    help="default: the presenter's aspect in presenters.json, else auto (the look's own shape)")
     hc = hs.add_parser("captions", help="fetch a YouTube video's English captions as text (source material)")
     hc.add_argument("url")
     hc.add_argument("--out", default=str(CONTENT / "sources"))
+    hs.add_parser("check", help="verify the HeyGen key")
+    hsu = hs.add_parser("setup", help="fill avatar/voice ids in content/presenters.json from your account")
+    hsu.add_argument("--presenters", default=str(CONTENT / "presenters.json"))
     hs.add_parser("avatars", help="list your own avatar looks")
     hs.add_parser("voices", help="list your own cloned voices")
     hst = hs.add_parser("status", help="show one video's status")
@@ -173,6 +177,11 @@ def main(argv: list[str] | None = None) -> None:
         elif a.hcmd == "captions":
             from pathlib import Path
             heygen.captions(a.url, Path(a.out), a.dry_run)
+        elif a.hcmd == "check":
+            heygen.check()
+        elif a.hcmd == "setup":
+            from pathlib import Path
+            heygen.setup_presenters(Path(a.presenters), a.dry_run)
         elif a.hcmd == "avatars":
             heygen.print_avatars()
         elif a.hcmd == "voices":

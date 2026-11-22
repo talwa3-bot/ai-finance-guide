@@ -2,13 +2,28 @@
   "tal": {
     "name": "Tal Wallenstein",
     "consent_confirmed": true,
-    "avatar_id": "",
-    "voices": {"he": "", "en": ""}
+    "avatar_id": "76ccb27976bb42f6866c2822f4ef4773",
+    "avatar_note": "Tal Wallenstein in the office (grey blazer). Alternative: 6e98e6141a3541f9a2ff0f09c92a4b26 (black polo).",
+    "voices": {
+      "he": "273c988ba7d7431399a2c153ca6e4b6e",
+      "en": "273c988ba7d7431399a2c153ca6e4b6e"
+    },
+    "voice_note": "'tal v' instant clone, default voice on Tal's looks. Other Tal clones: 178e7a36635d4c01b9176e652e5925a1, 1ab5831d44a94668b7bfda4450096f71.",
+    "aspect": "16:9",
+    "aspect_note": "Look 76cc... is landscape; 9:16 adds white bars. Use a vertical look for Reels."
   },
   "roi": {
-    "name": "Roi",
-    "consent_confirmed": false,
-    "avatar_id": "",
-    "voices": {"he": "", "en": ""}
-  }
+    "name": "Roi Wallenstein",
+    "consent_confirmed": true,
+    "consent_note": "HeyGen account owner; avatar and voice clones are his own.",
+    "avatar_id": "c2f528461aef4a70a94388a0f44a1555",
+    "avatar_note": "Photo avatar, navy suit, grey studio background.",
+    "voices": {
+      "he": "0a4b9b03c30646758732a32089f3c803",
+      "en": "0a4b9b03c30646758732a32089f3c803"
+    },
+    "voice_note": "'רועי ולנשטין' instant clone. Others: 9f0928e40bc04e5ea088f0ecc4506e76, a96c74c4eeeb42a0814f724e7a30706d.",
+    "aspect": "auto"
+  },
+  "duo_avatar_id": "28b0142f76484da48bfe5754af561e67"
 }

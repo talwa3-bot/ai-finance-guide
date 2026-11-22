@@ -88,6 +88,65 @@ def voices() -> list[dict]:
         token = resp.get("next_token")
 
 
+def check() -> dict:
+    """Verify the key (GET /v3/users/me, as HeyGen's docs recommend)."""
+    me = _data(_call("GET", "/v3/users/me"))
+    print("HeyGen key works.", json.dumps(me, ensure_ascii=False)[:300])
+    return me
+
+
+PRESENTER_NAMES = {"tal": ["tal", "טל", "wallenstein", "ולנשטין"], "roi": ["roi", "רועי"]}
+
+
+def _match(name: str | None, keys: list[str]) -> bool:
+    n = (name or "").lower()
+    return any(k in n for k in keys)
+
+
+def setup_presenters(path: Path, dry_run: bool = False) -> None:
+    """Fill avatar/voice ids in presenters.json by matching names in your HeyGen account.
+
+    Only fills empty fields and only when exactly one match exists; never touches
+    consent_confirmed. Anything ambiguous is printed for a human (or Claude) to pick.
+    """
+    presenters = json.loads(path.read_text(encoding="utf-8"))
+    if dry_run:
+        print(f"would list your avatars and voices and fill empty ids in {path}")
+        return
+    check()
+    looks, vs = avatars(), voices()
+    changed = False
+    for key, p in presenters.items():
+        keys = PRESENTER_NAMES.get(key, [key])
+        ready = [a for a in looks if _match(a.get("name"), keys) and a.get("status") in (None, "completed")]
+        if not p.get("avatar_id"):
+            if len(ready) == 1:
+                p["avatar_id"] = ready[0]["id"]
+                changed = True
+                print(f"{key}: avatar {ready[0]['id']} ({ready[0].get('name')})")
+            else:
+                print(f"{key}: {len(ready)} matching avatar looks, pick one:")
+                for a in ready:
+                    print(f"   {a['id']}  {a.get('name')!r}")
+        mine = [v for v in vs if _match(v.get("name"), keys) and v.get("status") in (None, "ACTIVE")]
+        for lang in ("he", "en"):
+            if p.setdefault("voices", {}).get(lang):
+                continue
+            by_lang = [v for v in mine if (v.get("language") or "").lower().startswith(lang)]
+            pick = by_lang if len(by_lang) == 1 else mine if len(mine) == 1 else []
+            if pick:
+                p["voices"][lang] = pick[0]["voice_id"]
+                changed = True
+                print(f"{key}: {lang} voice {pick[0]['voice_id']} ({pick[0].get('name')})")
+            else:
+                default = next((a.get("default_voice_id") for a in ready if a.get("default_voice_id")), None)
+                print(f"{key}: no single {lang} voice match"
+                      + (f"; the avatar's default voice {default} will be used" if default else ""))
+    if changed:
+        path.write_text(json.dumps(presenters, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"saved {path}")
+
+
 def print_avatars() -> None:
     for a in avatars():
         print(f"{a.get('id')}  {a.get('name')!r}  status={a.get('status')}  "
@@ -288,7 +347,8 @@ def batch(catalog: Path, scripts_dir: Path, presenters_file: Path, langs: list[s
                 continue
             script = scripts_dir / f"{r['id']}.{lang}.txt"
             dest = OUTPUTS_DIR / f"aifinance_{r['id']}_{lang}.mp4"
-            who = presenters.get(r["presenter"], {})
+            who = presenters.get(r["presenter"]) or {}
+            who = who if isinstance(who, dict) else {}
             if dest.exists():
                 print(f"skip  {dest.name} (already rendered)")
                 continue
@@ -310,5 +370,7 @@ def batch(catalog: Path, scripts_dir: Path, presenters_file: Path, langs: list[s
         print("  blocked:", p)
     for r, lang, script, dest, avatar, voice in todo:
         print(f"\n=== {r['id']} [{lang}] {r['presenter']}: {r['title']}")
-        render(str(script), avatar, voice, aspect, None, f"AI Finance - {r['id']} {lang}", None,
+        who = presenters.get(r["presenter"]) or {}
+        render(str(script), avatar, voice, aspect or who.get("aspect") or "auto", None,
+               f"AI Finance - {r['id']} {lang}", None,
                dry_run=dry_run, dest=dest)
