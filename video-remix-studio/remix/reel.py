@@ -131,7 +131,8 @@ def _t(x: float) -> str:
     return f"{int(x // 3600)}:{int(x % 3600 // 60):02d}:{x % 60:05.2f}"
 
 
-def build_ass(words, title: str, cta: str, lang: str, dur: float, path: Path) -> None:
+def build_ass(words, title: str, cta: str, lang: str, dur: float, path: Path,
+              name: str | None = None, role: str | None = None) -> None:
     font = FONTS.get(lang, "Noto Sans")
     rtl = lang == "he"
     m = "‏" if rtl else ""
@@ -146,6 +147,8 @@ ScaledBorderAndShadow: yes
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Title,{font},70,&H00FFFFFF,&H00FFFFFF,&H00401000,&H80000000,1,0,0,0,100,100,0,0,1,3,0,8,70,70,265,1
 Style: Cap,{font},84,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,1,0,0,0,100,100,0,0,1,6,3,8,60,60,1470,1
+Style: Name,{font},62,&H00FFFFFF,&H00FFFFFF,&H00401000,&HC0401000,1,0,0,0,100,100,0,0,3,18,0,2,0,0,0,1
+Style: Role,{font},42,&H003FD2FF,&H00FFFFFF,&H00401000,&HC0401000,0,0,0,0,100,100,0,0,3,14,0,2,0,0,0,1
 Style: End,{font},86,&H00FFFFFF,&H00FFFFFF,&H00401000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,5,80,80,0,1
 
 [Events]
@@ -154,6 +157,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     ev = []
     end_card = dur - 2.6 if dur > 8 else dur
     ev.append(f"Dialogue: 0,{_t(0)},{_t(end_card)},Title,,0,0,0,,{{\\fad(300,200)}}{m}{title}{m}")
+    if name:  # lower third over the bottom of the avatar frame, first ~4.5 s
+        y = AV_Y + AV - 150
+        ev.append(f"Dialogue: 3,{_t(0.4)},{_t(4.8)},Name,,0,0,0,,{{\\fad(250,250)\\pos(540,{y})}}{m}{name}{m}")
+        if role:
+            ev.append(f"Dialogue: 3,{_t(0.6)},{_t(4.8)},Role,,0,0,0,,{{\\fad(250,250)\\pos(540,{y + 70})}}{m}{role}{m}")
     # chunks of up to 3 words, never across a sentence end
     chunks, cur = [], []
     for w in words:
@@ -186,7 +194,7 @@ def probe_duration(p: Path) -> float:
 
 
 def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
-              cta: str | None = None) -> Path:
+              cta: str | None = None, name: str | None = None, role: str | None = None) -> Path:
     src, dest = Path(avatar).resolve(), Path(out).resolve()
     assets = brand_assets()
     dur = probe_duration(src)
@@ -194,7 +202,7 @@ def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
     spans = sentences(words)
     cta = cta or ("עקבו אחרי AI Finance" if lang == "he" else "Follow AI Finance")
     ass = dest.with_suffix(".ass")
-    build_ass(words, title, cta, lang, dur, ass)
+    build_ass(words, title, cta, lang, dur, ass, name, role)
 
     # punch-in: every second sentence is shown at 112% (a "jump cut" look)
     zoom_on = "+".join(f"between(t,{a:.2f},{b:.2f})" for i, (a, b) in enumerate(spans) if i % 2) or "0"
@@ -244,8 +252,10 @@ def main(argv: list[str]) -> None:
     p.add_argument("--lang", default="he", choices=["he", "en"])
     p.add_argument("--cta")
     p.add_argument("--out", required=True)
+    p.add_argument("--name", help="lower-third name, shown for the first seconds")
+    p.add_argument("--role", help="lower-third role line under the name")
     a = p.parse_args(argv)
-    make_reel(a.avatar, read_script(a.script), a.title, a.lang, a.out, a.cta)
+    make_reel(a.avatar, read_script(a.script), a.title, a.lang, a.out, a.cta, a.name, a.role)
 
 
 if __name__ == "__main__":
