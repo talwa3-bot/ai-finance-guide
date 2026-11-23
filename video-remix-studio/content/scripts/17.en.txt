@@ -1,0 +1,10 @@
+# 5 dashboards every CFO should have [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: 5 Excel Dashboards EVERY CFO Needs (Josh Aharonoff (Your CFO Guy)) https://www.youtube.com/watch?v=9GFSw7xcsvw
+# Lines starting with # are notes and are not spoken.
+Five dashboards every CFO should have.
+Cash, with a thirteen-week forecast.
+Profit and loss versus budget.
+Receivables and the top overdue customers.
+Margin by product or customer.
+Headcount and payroll versus plan.
+One screen each. If it needs scrolling, it needs editing.

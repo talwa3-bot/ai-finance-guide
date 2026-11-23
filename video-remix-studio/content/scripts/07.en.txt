@@ -1,0 +1,10 @@
+# Variance analysis that explains the why [en] Instagram Reel, look 3
+# Original short script inspired by the topic of: The Variance Analysis Technique Finance Professionals Are Missing (Soufyan Hamid) https://www.youtube.com/watch?v=ZvAodD7SCmA
+# Lines starting with # are notes and are not spoken.
+Revenue is below budget. That's not an explanation. That's the question.
+Split the gap into price, volume and mix.
+Now every cause has an owner.
+Explain only what crosses your threshold.
+Show it as one waterfall chart.
+AI drafts the commentary. You add what the numbers can't know.
+Follow AI Finance for more.

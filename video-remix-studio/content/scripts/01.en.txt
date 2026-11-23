@@ -1,0 +1,10 @@
+# Train your finance team on AI in 30 days [en] Instagram Reel, look 3
+# Original short script inspired by the topic of: How to Train Your Finance Team on AI in 30 Days (Full Guide) (Nicolas Boucher) https://www.youtube.com/watch?v=Qc99kkGVc_E
+# Lines starting with # are notes and are not spoken.
+Your finance team doesn't need more AI tools. It needs a 30-day plan.
+Week one: one approved tool, three shared prompts.
+Week two: everyone automates one task they hate.
+Week three: share what worked.
+Week four: measure the hours saved.
+One rule: AI drafts, people sign.
+Follow AI Finance for the full plan.

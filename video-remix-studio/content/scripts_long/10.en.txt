@@ -1,0 +1,13 @@
+# A forecasting model your CFO will trust [en] presenter=roi
+# Original script inspired by the topic of: FP&A Forecasting Model: 10 Steps to Impress Your CFO 1 (Bojan Radojicic) https://www.youtube.com/watch?v=roKJFHzOl4o
+# Lines starting with # are notes and are not spoken.
+A forecast your CFO trusts isn't the most detailed one. It's the one built on drivers.
+Step one: find the few drivers that move the business. Customers, price, churn, headcount.
+Step two: separate assumptions from calculations. All assumptions on one sheet, clearly labeled, with the source next to each one.
+Step three: forecast revenue from drivers, not from last year plus ten percent.
+Step four: link the three statements, so profit, balance sheet and cash all move together.
+Step five: build checks. The balance sheet balances, cash ties, and nothing is hard-coded inside a formula.
+Step six: add scenarios. Base, downside, upside, switched with one cell.
+Then compare the forecast to actuals every month and learn from the misses.
+AI can help write formulas and spot errors. The assumptions stay yours.
+Follow AI Finance for more.

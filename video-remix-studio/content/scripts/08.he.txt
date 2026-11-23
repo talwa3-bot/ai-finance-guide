@@ -1,0 +1,10 @@
+# Build a finance app without writing code [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: Vibe Coding for Finance: How to create a Financial Analysis App with AI (Christian Martinez) https://www.youtube.com/watch?v=mplYk-IfQvo
+# Lines starting with # are notes and are not spoken.
+אפשר לבנות כלי פיננסי בלי לכתוב קוד.
+מתארים את הכלי במילים פשוטות, והבינה המלאכותית בונה אותו.
+שלושה כללים.
+עובדים עם נתוני דוגמה עד שהכלי מאושר.
+בודקים מול מספרים שאתם כבר מכירים.
+שומרים על קטן: כלי עזר, לא הנהלת החשבונות.
+מה הייתם בונים ראשון? כתבו בתגובות.

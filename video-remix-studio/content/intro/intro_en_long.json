@@ -1,0 +1,125 @@
+{
+ "lang": "en",
+ "title": "Meet Tal Wallenstein",
+ "name": "Tal Wallenstein, CPA",
+ "role": "Co-founder · AI Finance",
+ "cta": "Great to have you with us!",
+ "segments": [
+  {
+   "id": "A",
+   "kind": "old",
+   "text": "Hi, I'm Tal Wallenstein. CPA, certified board director, and Big Four alumna."
+  },
+  {
+   "id": "B",
+   "kind": "new",
+   "text": "Two years at EY, and two and a half at KPMG.",
+   "label": "Big Four · EY · KPMG",
+   "photos": [
+    "events/tal-lecture-portrait.webp"
+   ]
+  },
+  {
+   "id": "C",
+   "kind": "old",
+   "text": "Third generation of accountants in Israel."
+  },
+  {
+   "id": "D",
+   "kind": "new",
+   "label": "May 2025",
+   "text": "In May 2025, I stepped into the world of AI. I studied it, researched it, and couldn't understand how it wasn't adapted to, or built into, the world of finance. I dug deeper, and realized it was there, just not the way we'd want it.",
+   "photos": [
+    "events/tal-screen.webp",
+    "events/tal-teaching.webp",
+    "events/tal-presentation-side.webp"
+   ]
+  },
+  {
+   "id": "E",
+   "kind": "new",
+   "label": "Tal & Roei",
+   "text": "That's when I started AI Finance, together with Roei, who's not only my partner, but also my little brother.",
+   "spoken": "That's when I started AI Finance, together with Roey, who's not only my partner, but also my little brother.",
+   "photos": [
+    "upload:cfa364f7-image.jpg",
+    "upload:fe413116-image.png"
+   ]
+  },
+  {
+   "id": "F",
+   "kind": "new",
+   "label": "In Israel and abroad",
+   "text": "Since then, we've worked with many organizations: from freelancers to private and public companies, in Israel and abroad.",
+   "photos": [
+    "events/conference-stage.webp",
+    "events/workshop-full-room.webp",
+    "events/roei-workshop.webp"
+   ]
+  },
+  {
+   "id": "G",
+   "kind": "new",
+   "label": "One goal",
+   "text": "With one goal: to turn my world from a gray, boring world, drained of energy and passion and full of grunt work, into an interesting, serious world of innovation and building. A world where each of us wants to get up and learn more. A place where the grunt work is left to robots, because we're already building and creating.",
+   "photos": [
+    "events/hands-on-room.webp",
+    "events/table-practice.webp",
+    "events/tal-main-stage.webp",
+    "events/financial-demo-room.webp"
+   ]
+  },
+  {
+   "id": "H",
+   "kind": "old",
+   "text": "We help finance teams bring AI into their daily work: lectures, workshops, and hands-on guidance."
+  },
+  {
+   "id": "I",
+   "kind": "old",
+   "label": "Teaching in Israeli academia",
+   "text": "I also teach the first course of its kind on financial statement analysis with AI."
+  },
+  {
+   "id": "J",
+   "kind": "new",
+   "text": "This is exactly where you come in.",
+   "photos": [
+    "events/table-audience-view.webp"
+   ]
+  },
+  {
+   "id": "K",
+   "kind": "old",
+   "text": "The future of AI starts with people."
+  },
+  {
+   "id": "M",
+   "kind": "new",
+   "label": "Human in the loop",
+   "text": "Our motto today is human in the loop. Not a machine that replaces people, but one that pushes people to move forward together with AI, and build a new, richer world of content.",
+   "photos": [
+    "events/team-session.webp",
+    "events/workshop-conversation.webp"
+   ],
+   "vo": "audio/motto_en.mp3"
+  },
+  {
+   "id": "L1",
+   "kind": "new",
+   "label": "With a smile",
+   "text": "And all of it with a smile.",
+   "photos": [
+    "upload:9c0c4b14-image.jpg"
+   ]
+  },
+  {
+   "id": "L2",
+   "kind": "new",
+   "text": "So nice to meet you, and great to have you with us.",
+   "photos": [
+    "events/tal-stage-gesture.webp"
+   ]
+  }
+ ]
+}

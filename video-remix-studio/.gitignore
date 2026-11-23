@@ -4,3 +4,5 @@ outputs/
 __pycache__/
 *.pyc
 .venv/
+# Third-party captions are source material only; keep them out of git.
+content/sources/

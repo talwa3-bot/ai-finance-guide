@@ -1,0 +1,9 @@
+# Cohort analysis in Excel in plain words [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: Make a Cohort Analysis in Excel (Kenji Explains) https://www.youtube.com/watch?v=GOLv8xbd6t0
+# Lines starting with # are notes and are not spoken.
+ממוצעים משקרים. קבוצות לקוחות לא.
+מחלקים את הלקוחות לפי חודש ההצטרפות, ועוקבים אחרי כל קבוצה לאורך זמן.
+סך ההכנסות יכול לגדול, בזמן שכל קבוצה חדשה נשארת פחות זמן.
+באקסל: חודש רכישה ראשון, חודשים מאז ההצטרפות, וטבלת ציר אחת עם צביעה.
+הבינה המלאכותית כותבת את הנוסחאות. אתם מגדירים מי נחשב לקוח פעיל.
+עקבו אחרי AI Finance לעוד.

@@ -1,0 +1,9 @@
+# 5 AI use cases that pay off fastest in finance [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Smart Finance Day 2: 5 High Impact AI Use Cases for Finance (Christian Martinez) https://www.youtube.com/watch?v=YKp-dakYdUM
+# Lines starting with # are notes and are not spoken.
+Where should finance start with AI? Not with the fanciest use case.
+Start with month-end commentary, contract review and data cleanup.
+Then use it for scenario questions and board summaries.
+Pick by two numbers: hours saved every month, and the risk if it's wrong.
+High hours, low risk. Start there.
+Follow AI Finance for more.

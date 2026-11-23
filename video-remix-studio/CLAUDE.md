@@ -16,7 +16,18 @@ One project that unifies three open-source video engines behind one CLI and one 
 - `remix/registry.py` - engines, models, sizes, VACE task list. Add a new engine here first.
 - `remix/runner.py` - setup, download, command builders (`vace_edit_cmd`, `wan_generate_cmd`, `wangp_cmd`), doctor.
 - `remix/__main__.py` - CLI (`python -m remix ...`).
-- `remix/ui.py` - Gradio UI, Hebrew RTL labels, port 7870 (WanGP keeps its own 7860).
+- `remix/ui.py` - Gradio UI, Hebrew RTL labels, port 7870 (WanGP keeps its own 7860). `--host 0.0.0.0` / `--share` require `REMIX_UI_PASSWORD`.
+- `remix/cloud.py` - cloud client: rewrites file args to remote paths, calls the deployed Modal function, saves the video to `outputs/`. Imports `modal` lazily (dry-run needs no account).
+- `remix/heygen.py` - "make it mine": `heygen transcribe` (ffmpeg -> 16 kHz wav -> faster-whisper on CPU, samples passed as numpy to avoid a PyAV incompatibility), `heygen render` (HeyGen API v3: POST /v3/videos, poll GET /v3/videos/{id}, download data.video_url), `heygen avatars|voices|status`. Header X-Api-Key from env HEYGEN_API_KEY. Engine chosen from the look's `supported_api_engines` (prefers heygen-avatar-6). Endpoints verified against developers.heygen.com, Nov 2026.
+- `content/` - AI Finance content: `catalog.csv` (20 source videos, verified YouTube ids, presenter, languages), `scripts/<id>.<he|en>.txt` (original ~60s scripts; `#` lines are notes, stripped before sending), `presenters.json` (avatar/voice ids per presenter and language, `consent_confirmed` gate). `heygen batch` renders missing ones to `outputs/aifinance_<id>_<lang>.mp4`. `content/sources/` (third-party captions) is gitignored. YouTube blocks caption download from cloud IPs; `heygen captions` works from a home connection.
+- `remix/finish.py` - free local Reel finishing: fit to 1080x1920 (blurred fill for square looks), burn captions from the script text timed by faster-whisper word timestamps, RLM marks for Hebrew. `python -m remix.finish raw.mp4 script.txt --lang he`.
+- Instagram Reels pipeline v2 (Nov 2026, after Tal rejected v1 for no gestures, poor Hebrew TTS, weak captions, no design):
+  1. Hebrew voice-over in ElevenLabs with Tal's clone 'טל עברית' (voice aCOTFRhimzj4r2TMDgV8, eleven_v3, ~$0.06/video) via the ElevenLabs connector; English names spelled phonetically in the spoken text only.
+  2. Upload the mp3 to HeyGen (POST /v3/assets) and render with `audio_asset_id`, engine heygen-avatar-6-turbo, `motion_prompt` for hand gestures, aspect 1:1, look 3 (496216...; shows hands). Real rate ~$0.049/s (a 3 s test misleadingly showed $0.033/s).
+  3. `python -m remix.reel avatar.mp4 script.txt --title ... [--name --role] --lang he --out reel.mp4`: brand background, logo, title, rounded frame, jump-cut zooms, word-by-word captions (script words aligned to whisper timings), progress bar, end card. Free, local.
+  Budget $1.50 per video incl. tests and audio; keep spoken length <= ~26 s. Every spend goes in `content/costs.csv`.
+  v1 (avatar_iii + remix/finish.py) is superseded; videos 01, 03-08 v1 renders are unusable.
+- `cloud/modal_app.py` - Modal app. Image is generated from `registry.py` + `runner.install_steps` (one venv per engine, same as local setup). Volumes `remix-models`, `remix-outputs`. Functions: `run_job` (GPU per call), `download_models`, `ui` (web server, secret `remix-ui`).
 
 ## Commands
 ```bash
@@ -26,12 +37,16 @@ python -m remix setup [vace wan21 wangp]
 python -m remix download [model ...]
 python -m remix --dry-run edit --task depth --video in.mp4 --prompt "..."   # print, don't run
 python -m remix ui
+python -m remix --dry-run --cloud edit --task depth --video in.mp4 --prompt "..."   # cloud plan
+python -m remix cloud deploy|models|url
+python -m remix heygen transcribe in.mp4 ; python -m remix --dry-run heygen render in.script.txt
 ```
 
 ## Verified engine arguments (checked against source, Nov 2026)
 - `vace/vace_pipeline.py`: `--base wan --task --video --mode --bbox --image --prompt --model_name --size --ckpt_dir` (+ `--save_dir`, `--sample_steps`, ...). Output: `results/<model_name>/<timestamp>/out_video.mp4`.
 - `generate.py`: `--task --size --ckpt_dir --prompt --image --src_video --src_mask --src_ref_images --save_file --offload_model --t5_cpu`.
-- `wgp.py`: no args opens the UI; `--process <queue.zip>` runs headless.
+- `wgp.py`: no args opens the UI; `--process <queue.zip>` runs headless; also `--listen`, `--server-port`, `--server-name` (shared/cli_args.py).
+- `flash_attn` (in VACE and Wan2.1 requirements) is installed first with `--no-build-isolation`, see `FLASH_ATTN` in registry.py.
 Anything after `--` on the CLI is passed through untouched. If an engine renames an argument, update the builder in `runner.py`.
 
 ## Requirements to actually generate
@@ -45,4 +60,5 @@ NVIDIA GPU (1.3B ~8-12GB VRAM; 14B needs much more), git, uv, ffmpeg recommended
 ## Ideas / next steps
 - Connect to AI Finance Studio (the user's video editor) as a backend for "remix this clip".
 - Job queue + history page in the UI.
-- Cloud GPU runner (RunPod/Modal) for machines without a strong GPU.
+- Cloud GPU runner: done on Modal (Nov 2026). Not yet run on a real GPU; first `modal deploy` will show whether every install step builds (VACE annotator git deps, flash_attn wheel).
+- Optional: WanGP in the cloud (needs CUDA 13 driver), job history page.

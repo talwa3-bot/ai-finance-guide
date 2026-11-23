@@ -1,0 +1,9 @@
+# Copilot inside the Microsoft tools you already use [he] Instagram Reel, look 4
+# Original short script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
+# Lines starting with # are notes and are not spoken.
+אם החברה שלכם עובדת עם מיקרוסופט, קופיילוט כבר שם.
+באקסל: להסביר נוסחאות, למצוא חריגים, לבנות טבלאות ציר.
+בדואר: לסכם שרשור עם ספק ולנסח תשובה.
+בפגישות: ההחלטות מהישיבה שפספסתם.
+במצגות: טיוטה ראשונה לסקירה החודשית.
+ואתם עדיין בודקים כל מספר לפני שהוא יוצא.

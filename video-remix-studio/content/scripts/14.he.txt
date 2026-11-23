@@ -1,0 +1,10 @@
+# Copilot in Excel: 5 finance tasks [he] Instagram Reel, look 23
+# Original short script inspired by the topic of: How to Use Copilot in Excel For Finance (5 INSANE Use Cases) ((verify channel)) https://www.youtube.com/watch?v=s5xIJgJcpTk
+# Lines starting with # are notes and are not spoken.
+חמש משימות כספים שקופיילוט עושה באקסל כבר היום.
+לנקות קבצים מבולגנים.
+לכתוב נוסחאות ממילים פשוטות.
+לבנות טבלאות ציר ותרשימים.
+לסמן הוצאות חריגות.
+לנסח תובנות למזכר להנהלה.
+טיפ: קודם הופכים את הנתונים לטבלה, ובודקים כל נוסחה שהוא כותב.

@@ -1,0 +1,9 @@
+# 4 ways finance teams should use Claude [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Claude for Finance: 4 POWER Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=5YEaZMaEMFQ
+# Lines starting with # are notes and are not spoken.
+Four ways finance teams should use Claude.
+Long documents: covenants and obligations in a table, with page references.
+Spreadsheets: explain a model, find broken formulas.
+Small tools: a calculator or a dashboard you can share.
+Projects: your policies and templates in one place.
+Use the approved version, and verify every number.

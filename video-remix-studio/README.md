@@ -104,6 +104,98 @@ python -m remix edit --task pose --video in.mp4 --prompt "..." -- --sample_steps
 python -m remix --dry-run edit --task depth --video in.mp4 --prompt "test"
 ```
 
+## להפוך סרטון לשלך עם הייג׳ן
+
+לוקחים סרטון קיים, מחלצים ממנו את הטקסט, כותבים אותו מחדש במילים שלך,
+והאווטאר שלך בהייג׳ן מציג אותו בקול שלך.
+
+### הכנה (פעם אחת)
+
+```bash
+pip install faster-whisper          # תמלול מקומי, עובד גם בלי כרטיס מסך
+export HEYGEN_API_KEY=המפתח-שלך       # מהייג׳ן: הגדרות, ממשק תכנות
+python -m remix heygen avatars      # רשימת האווטארים שלך, מעתיקים את המזהה
+python -m remix heygen voices       # רשימת הקולות המשובטים שלך
+```
+
+### לכל סרטון
+
+```bash
+python -m remix heygen transcribe source.mp4            # יוצר outputs/source.transcript.txt
+# כותבים את התסריט החדש בקובץ, למשל source.script.txt
+python -m remix heygen render source.script.txt --avatar <מזהה> --aspect 9:16
+```
+
+התוצאה יורדת לתיקייה `outputs/`. ברירת המחדל היא סרטון אנכי לרשתות (9:16).
+לבדיקה בלי לשלוח כלום להייג׳ן: `python -m remix --dry-run heygen render source.script.txt`
+
+חשוב: כותבים את הרעיון מחדש במילים שלך. לא מעתיקים מילה במילה תוכן של יוצר אחר.
+
+### הרבה סרטונים בבת אחת
+
+הקטלוג, התסריטים וההגדרות של המציגים נמצאים בתיקייה `content/`. ההסבר המלא ב־`content/README.md`.
+
+```bash
+python -m remix --dry-run heygen batch     # מה ירוץ ומה חסום
+python -m remix heygen batch --lang he     # כל הסרטונים בעברית
+```
+
+## הרצה על שרת גרפי בענן (מודל)
+
+אין כרטיס מסך חזק? אפשר להריץ הכול על שרת בענן של מודל (Modal), ולעבוד גם מהטלפון.
+משלמים רק על זמן ריצה, והשרת נכבה לבד כשלא משתמשים בו.
+
+### הקמה (פעם אחת, מהמחשב)
+
+1. פותחים חשבון באתר modal.com ומתחברים:
+
+```bash
+pip install modal
+modal setup
+```
+
+2. בוחרים סיסמה לממשק, כדי שאף אחד אחר לא יוכל להיכנס:
+
+```bash
+modal secret create remix-ui REMIX_UI_PASSWORD=הסיסמה-שלך
+```
+
+3. מקימים את השרת ומורידים את המודלים לענן:
+
+```bash
+python -m remix cloud deploy     # בנייה ראשונה לוקחת זמן רב, אחר כך מהיר
+python -m remix cloud models     # מוריד את המודל הקטן ואת כלי ההכנה לאחסון בענן
+python -m remix cloud url        # מדפיס את כתובת הממשק
+```
+
+### מהטלפון
+
+1. פותחים בדפדפן את הכתובת שקיבלתם מ־`cloud url`.
+2. נכנסים עם שם המשתמש `remix` והסיסמה שבחרתם.
+3. מעלים סרטון, בוחרים סוג עיבוד, ולוחצים "הרצה". התוצאה מופיעה בעמוד ואפשר להוריד אותה.
+
+הפעלה ראשונה אחרי הפסקה לוקחת כמה דקות, עד שהשרת עולה.
+אחרי 5 דקות בלי שימוש השרת נכבה, והחיוב נעצר.
+
+### מהמחשב, בלי כרטיס מסך
+
+מוסיפים `--cloud` לפני הפקודה. הקבצים עולים לענן, והתוצאה יורדת לתיקייה `outputs/`:
+
+```bash
+python -m remix --cloud edit --task depth --video input.mp4 --prompt "a robot dancing"
+python -m remix --cloud --gpu H100 generate --task vace-14B --video src.mp4 --prompt "..."
+```
+
+כרטיס ברירת המחדל: L40S למודל הקטן, A100 עם 80 ג׳יגה למודל הגדול. `--gpu` מחליף אותו.
+לבדיקה בלי לשלוח כלום: `python -m remix --dry-run --cloud edit ...`
+
+### מגבלות בענן
+
+- בענן מותקנים ויאס ווואן 2.1. וואן ג׳יפי דורש גרסת דרייבר חדשה מאוד, ולכן הוא לא נכלל כברירת מחדל.
+  להוספה: `REMIX_CLOUD_ENGINES=vace,wan21,wangp python -m remix cloud deploy`
+- הממשק בענן רץ על L40S. כדי להשתמש בו במודל הגדול: `REMIX_CLOUD_UI_GPU=A100-80GB python -m remix cloud deploy`
+- התוצאות נשמרות גם באחסון בענן בשם `remix-outputs`.
+
 ## סוגי עיבוד עיקריים בויאס
 
 | משימה | מה קורה |

@@ -1,0 +1,9 @@
+# Cohort analysis in Excel in plain words [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Make a Cohort Analysis in Excel (Kenji Explains) https://www.youtube.com/watch?v=GOLv8xbd6t0
+# Lines starting with # are notes and are not spoken.
+Averages lie. Cohorts don't.
+Group customers by the month they joined, and follow each group over time.
+Total revenue can grow while every new group stays for less time.
+In Excel: first purchase month, months since joining, and one pivot table with a color scale.
+AI can write the formulas. You define who counts as active.
+Follow AI Finance for more.

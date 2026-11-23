@@ -1,0 +1,10 @@
+# Copilot in Excel: 5 finance tasks [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: How to Use Copilot in Excel For Finance (5 INSANE Use Cases) ((verify channel)) https://www.youtube.com/watch?v=s5xIJgJcpTk
+# Lines starting with # are notes and are not spoken.
+Five finance tasks Copilot does in Excel today.
+Clean messy exports.
+Write formulas from plain words.
+Build pivots and charts.
+Flag unusual expenses.
+Draft the key insights for your management note.
+Tip: format your data as a table first, and check every formula it writes.

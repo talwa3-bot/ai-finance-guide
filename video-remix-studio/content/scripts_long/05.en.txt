@@ -1,0 +1,10 @@
+# Cohort analysis in Excel in plain words [en] presenter=roi
+# Original script inspired by the topic of: Make a Cohort Analysis in Excel (Kenji Explains) https://www.youtube.com/watch?v=GOLv8xbd6t0
+# Lines starting with # are notes and are not spoken.
+Averages lie. Cohorts don't.
+A cohort analysis groups customers by the month they joined, and then follows each group over time.
+Why does it matter? Imagine total revenue is growing. Looks great. But the cohort table shows that every new group of customers stays for a shorter time than the one before. Growth is hiding a retention problem.
+In Excel it's three steps. One: for each customer, find the first purchase month. Two: for each transaction, calculate how many months passed since that first month. Three: build a pivot table, cohorts in the rows, months since joining in the columns, and show the percentage still active.
+Add color scales, and the pattern jumps out.
+AI can write the formulas for you, but you decide what counts as an active customer.
+Follow AI Finance for more practical finance tools.

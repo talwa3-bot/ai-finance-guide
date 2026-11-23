@@ -1,0 +1,8 @@
+# Where vibe coding actually helps finance [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: Vibe Coding for Finance: Best Use Cases for 2026 ((verify channel)) https://www.youtube.com/watch?v=6bLmXAUWL2k
+# Lines starting with # are notes and are not spoken.
+Where does vibe coding actually help finance?
+Small internal tools: matching two files, commission calculators, a monthly dashboard.
+Where doesn't it? Anything that becomes a system of record: the ledger, payroll, tax.
+The test: if the tool breaks, can you still close the month?
+If yes, build it. If not, talk to IT first.

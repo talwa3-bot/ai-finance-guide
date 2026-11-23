@@ -7,20 +7,30 @@
   generate  run Wan2.1 directly (t2v / i2v / vace tasks with your own masks)
   wangp     open the WanGP studio, or process a saved WanGP queue headless
   ui        one web interface for all of the above
+  cloud     deploy / download models / get the UI address on a cloud GPU (Modal)
+  heygen    "make it mine": transcribe a video, then render your script with your HeyGen avatar
+
+Add --cloud before edit/generate to run that job on a cloud GPU instead of here:
+  python -m remix --cloud edit --task depth --video in.mp4 --prompt "..."
 """
 from __future__ import annotations
 
 import argparse
 import sys
 
-from . import runner
-from .registry import ENGINES, MODELS, VACE_TASKS
+from . import cloud, heygen, runner
+from .registry import ENGINES, MODELS, ROOT, VACE_TASKS
+
+CONTENT = ROOT / "content"
 
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="remix", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dry-run", action="store_true", help="print commands without running them")
+    p.add_argument("--cloud", action="store_true",
+                   help="run edit/generate on a cloud GPU (Modal) instead of this machine")
+    p.add_argument("--gpu", help="cloud GPU type override, e.g. L40S, A100-80GB, H100")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("setup", help="install engines")
@@ -61,7 +71,46 @@ def main(argv: list[str] | None = None) -> None:
 
     u = sub.add_parser("ui", help="unified web interface")
     u.add_argument("--port", type=int, default=7870)
+    u.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to accept other devices")
     u.add_argument("--share", action="store_true")
+
+    c = sub.add_parser("cloud", help="manage the cloud GPU deployment (Modal)")
+    c.add_argument("action", choices=["deploy", "models", "url"],
+                   help="deploy the app / download weights into the cloud / print the UI address")
+    c.add_argument("models", nargs="*", help="for 'models': which weights (default: 1.3B + annotators)")
+
+    h = sub.add_parser("heygen", help="transcribe a source video / render a script with your HeyGen avatar")
+    hs = h.add_subparsers(dest="hcmd", required=True)
+    ht = hs.add_parser("transcribe", help="source video -> outputs/<name>.transcript.txt")
+    ht.add_argument("video")
+    ht.add_argument("--model", default="small", help="faster-whisper model: tiny/base/small/medium/large-v3")
+    ht.add_argument("--language", help="force a language code, e.g. he or en (default: auto)")
+    hr = hs.add_parser("render", help="script text file -> HeyGen avatar video in outputs/")
+    hr.add_argument("script", help="UTF-8 text file with the final script")
+    hr.add_argument("--avatar", help="avatar look id (default: env HEYGEN_AVATAR_ID)")
+    hr.add_argument("--voice", help="voice id (default: env HEYGEN_VOICE_ID, else the look's default)")
+    hr.add_argument("--aspect", choices=heygen.ASPECTS, default="9:16")
+    hr.add_argument("--resolution", help="e.g. 1080p (HeyGen default when omitted)")
+    hr.add_argument("--engine", help="override; default picks from the look's supported_api_engines")
+    hr.add_argument("--title")
+    hb = hs.add_parser("batch", help="render all catalog scripts with the right presenter and language")
+    hb.add_argument("--catalog", default=str(CONTENT / "catalog.csv"))
+    hb.add_argument("--scripts", default=str(CONTENT / "scripts"))
+    hb.add_argument("--presenters", default=str(CONTENT / "presenters.json"))
+    hb.add_argument("--lang", nargs="+", default=["he", "en"], choices=["he", "en"])
+    hb.add_argument("--ids", nargs="*", help="only these catalog ids, e.g. 01 05")
+    hb.add_argument("--aspect", choices=heygen.ASPECTS,
+                    help="default: the presenter's aspect in presenters.json, else auto (the look's own shape)")
+    hc = hs.add_parser("captions", help="fetch a YouTube video's English captions as text (source material)")
+    hc.add_argument("url")
+    hc.add_argument("--out", default=str(CONTENT / "sources"))
+    hs.add_parser("check", help="verify the HeyGen key")
+    hsu = hs.add_parser("setup", help="fill avatar/voice ids in content/presenters.json from your account")
+    hsu.add_argument("--presenters", default=str(CONTENT / "presenters.json"))
+    hs.add_parser("avatars", help="list your own avatar looks")
+    hs.add_parser("voices", help="list your own cloned voices")
+    hst = hs.add_parser("status", help="show one video's status")
+    hst.add_argument("video_id")
 
     a = p.parse_args(argv)
     runner.DRY_RUN = a.dry_run
@@ -80,27 +129,74 @@ def main(argv: list[str] | None = None) -> None:
     elif a.cmd == "doctor":
         runner.doctor()
     elif a.cmd == "edit":
+        if a.task not in VACE_TASKS:
+            print(f"note: '{a.task}' is not in the common task list; passing it to VACE as-is")
+        if a.cloud:
+            sys.exit(cloud.submit(cloud.edit_job(a, extra), a.dry_run, a.gpu))
+        runner.check_inputs(a.video, *(a.image.split(",") if a.image else []))
         runner.ensure_ready(ENGINES["vace"])
         started = runner.now()
         code = runner.run(runner.vace_edit_cmd(a.task, a.video, a.prompt, a.size, a.mode,
                                                a.bbox, extra, a.image), cwd=ENGINES["vace"].path)
-        out = None if a.dry_run else runner.collect_vace_result(started)
+        if a.dry_run:
+            print("\n(dry-run: nothing was run)")
+            sys.exit(0)
+        out = runner.collect_vace_result(started)
         print(f"\nResult: {out}" if out else f"\nFinished with code {code}; see VACE/results/")
         sys.exit(code)
     elif a.cmd == "generate":
+        if a.cloud:
+            sys.exit(cloud.submit(cloud.generate_job(a, extra), a.dry_run, a.gpu))
+        runner.check_inputs(a.image, a.video, a.mask, *(a.ref or []))
         runner.ensure_ready(ENGINES["wan21"])
         out = runner.new_output("wan21")
         code = runner.run(runner.wan_generate_cmd(a.task, a.prompt, a.size, a.image, a.video,
                                                   a.mask, a.ref, out, extra),
                           cwd=ENGINES["wan21"].path)
-        print(f"\nResult: {out}")
+        if a.dry_run:
+            print(f"\n(dry-run: nothing was run; a real run would save {out})")
+            sys.exit(0)
+        print(f"\nResult: {out}" if out.exists() else f"\nFinished with code {code}; no video saved")
         sys.exit(code)
     elif a.cmd == "wangp":
         runner.ensure_ready(ENGINES["wangp"])
         sys.exit(runner.run(runner.wangp_cmd(a.process, extra), cwd=ENGINES["wangp"].path))
     elif a.cmd == "ui":
         from .ui import launch
-        launch(a.port, a.share)
+        launch(a.port, a.share, a.host)
+    elif a.cmd == "heygen":
+        if a.hcmd == "transcribe":
+            heygen.transcribe(a.video, a.model, a.language, a.dry_run)
+        elif a.hcmd == "render":
+            heygen.render(a.script, a.avatar, a.voice, a.aspect, a.resolution, a.title,
+                          a.engine, a.dry_run)
+        elif a.hcmd == "batch":
+            from pathlib import Path
+            heygen.batch(Path(a.catalog), Path(a.scripts), Path(a.presenters), a.lang, a.ids,
+                         a.aspect, a.dry_run)
+        elif a.hcmd == "captions":
+            from pathlib import Path
+            heygen.captions(a.url, Path(a.out), a.dry_run)
+        elif a.hcmd == "check":
+            heygen.check()
+        elif a.hcmd == "setup":
+            from pathlib import Path
+            heygen.setup_presenters(Path(a.presenters), a.dry_run)
+        elif a.hcmd == "avatars":
+            heygen.print_avatars()
+        elif a.hcmd == "voices":
+            heygen.print_voices()
+        else:
+            heygen.status(a.video_id)
+    elif a.cmd == "cloud":
+        if a.action == "deploy":
+            sys.exit(cloud.deploy(a.dry_run))
+        if a.action == "models":
+            names = a.models or ["Wan2.1-VACE-1.3B", "VACE-Annotators"]
+            if bad := [m for m in names if m not in MODELS]:
+                p.error(f"unknown model(s): {bad}. choose from {list(MODELS)}")
+            sys.exit(cloud.download_models(names, a.dry_run))
+        sys.exit(cloud.ui_url(a.dry_run))
 
 
 if __name__ == "__main__":

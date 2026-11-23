@@ -1,0 +1,10 @@
+# Building a financial model with AI the safe way [he] Instagram Reel, look 3
+# Original short script inspired by the topic of: How to Use Claude to Build INSANE Financial Models (2026) (Nicolas Boucher) https://www.youtube.com/watch?v=W-tMaaX777I
+# Lines starting with # are notes and are not spoken.
+בינה מלאכותית בונה מודל פיננסי בדקות. בגלל זה צריך כללים.
+אתם כותבים את ההנחות.
+נתונים, חישובים ותוצאות בגיליונות נפרדים.
+אין מספרים קבועים בתוך נוסחאות.
+בדיקות מובנות שהמודל מתאים.
+ואז משנים הנחה אחת ורואים שהמודל מתנהג כמו שצריך.
+מודל שאי אפשר להסביר הוא מודל שאי אפשר להגן עליו.

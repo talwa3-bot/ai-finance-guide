@@ -1,0 +1,10 @@
+# Build a finance app without writing code [en] Instagram Reel, look 23
+# Original short script inspired by the topic of: Vibe Coding for Finance: How to create a Financial Analysis App with AI (Christian Martinez) https://www.youtube.com/watch?v=mplYk-IfQvo
+# Lines starting with # are notes and are not spoken.
+You can build a finance app without writing code.
+Describe the tool in plain words, and AI builds it.
+Three rules.
+Use sample data until the tool is approved.
+Test it against numbers you already know.
+Keep it small: helpers, not your ledger.
+What would you build first? Tell me in the comments.

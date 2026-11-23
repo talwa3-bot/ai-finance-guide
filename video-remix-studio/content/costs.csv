@@ -1,0 +1,21 @@
+video,kind,engine,look,seconds,cost_usd,time
+01_he,test,heygen-avatar-6,76ccb27976bb42f6866c2822f4ef4773,5.4,0.5,2026-11-22 11:40
+01_he,test,avatar_iii,5df8597634f64beea7062725fb4c51a7,6.8,0.1167,2026-11-22 12:10
+01_he,render,avatar_iii,496216089094426aba575d3c1a583bef,26.4,0.45,2026-11-22 12:53
+02_he,render,avatar_iii,5df8597634f64beea7062725fb4c51a7,25.2,0.4167,2026-11-22 12:55
+03_he,render,avatar_iii,57e523aee0d64544a164fa5ffa086c3d,24.4,0.4167,2026-11-22 12:58
+04_he,render,avatar_iii,496216089094426aba575d3c1a583bef,21.4,0.3667,2026-11-22 13:01
+05_he,render,avatar_iii,5df8597634f64beea7062725fb4c51a7,27.3,0.4667,2026-11-22 13:02
+06_he,render,avatar_iii,57e523aee0d64544a164fa5ffa086c3d,24.8,0.4167,2026-11-22 13:05
+07_he,render,avatar_iii,496216089094426aba575d3c1a583bef,21.0,0.35,2026-11-22 13:07
+08_he,render,avatar_iii,5df8597634f64beea7062725fb4c51a7,21.0,0.35,2026-11-22 13:09
+02_he,test,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,3.0,0.1,2026-11-22 13:20
+02_he,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,23.4,1.1500,2026-11-22 13:30
+intro_he,audio,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,26.2,0.0634,2026-11-23 09:00
+intro_he,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,26.2,1.3000,2026-11-23 09:10
+intro_en,audio,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,26.0,0.0731,2026-11-23 09:15
+intro_en,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,26.0,1.2500,2026-11-23 09:25
+intro_en,audio-extension,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,58.1,0.1769,2026-11-23 10:05
+intro_en,voice-test,elevenlabs v4+v2,3 samples,30.6,0.0924,2026-11-23 11:00
+intro_en,audio-motto,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,11.4,0.0320,2026-11-23 11:20
+intro_he,audio-extension,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,76.2,0.1820,2026-11-23 11:40

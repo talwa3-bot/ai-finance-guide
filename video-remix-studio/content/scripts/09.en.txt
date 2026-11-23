@@ -1,0 +1,10 @@
+# ChatGPT moves most finance teams skip [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: ChatGPT for Finance: 9 POWER Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=TICcBq5thWM
+# Lines starting with # are notes and are not spoken.
+Most finance people use ChatGPT like a search engine.
+Four better moves.
+A project for month-end, with your policies inside.
+Upload the file, not a screenshot.
+Reuse the same prompts every month.
+And ask it to review your work: what would an auditor question?
+Which move will you try this week?

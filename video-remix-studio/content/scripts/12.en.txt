@@ -1,0 +1,9 @@
+# Copilot inside the Microsoft tools you already use [en] Instagram Reel, look 4
+# Original short script inspired by the topic of: Copilot for Finance: 5 Power Moves You're Not Using (Nicolas Boucher) https://www.youtube.com/watch?v=PYn-qfGDlr0
+# Lines starting with # are notes and are not spoken.
+If your company runs on Microsoft, Copilot is already there.
+In Excel: explain formulas, find outliers, build pivots.
+In Outlook: summarize the supplier thread and draft a reply.
+In Teams: the decisions from the meeting you missed.
+In PowerPoint: the first draft of the monthly review.
+You still check every number before it goes out.
