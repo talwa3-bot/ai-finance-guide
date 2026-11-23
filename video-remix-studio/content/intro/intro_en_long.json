@@ -94,14 +94,25 @@
    "text": "The future of AI starts with people."
   },
   {
+   "id": "M",
+   "kind": "new",
+   "label": "Human in the loop",
+   "text": "Our motto today is human in the loop. Not a machine that replaces people, but one that pushes people to move forward together with AI, and build a new, richer world of content.",
+   "photos": [
+    "events/team-session.webp",
+    "events/workshop-conversation.webp"
+   ]
+  },
+  {
    "id": "L",
    "kind": "new",
    "label": "Our motto",
-   "text": "And all of it with a smile. That's our motto. So nice to meet you, and great to have you with us.",
+   "text": "And all of it with a smile. So nice to meet you, and great to have you with us.",
    "photos": [
     "events/tal-stage-gesture.webp",
     "upload:9c0c4b14-image.jpg"
-   ]
+   ],
+   "avatar_note": "Render as avatar with a warm smile at the end (Tal's request)."
   }
  ]
 }
