@@ -101,18 +101,25 @@
    "photos": [
     "events/team-session.webp",
     "events/workshop-conversation.webp"
+   ],
+   "vo": "audio/motto_en.mp3"
+  },
+  {
+   "id": "L1",
+   "kind": "new",
+   "label": "With a smile",
+   "text": "And all of it with a smile.",
+   "photos": [
+    "upload:9c0c4b14-image.jpg"
    ]
   },
   {
-   "id": "L",
+   "id": "L2",
    "kind": "new",
-   "label": "Our motto",
-   "text": "And all of it with a smile. So nice to meet you, and great to have you with us.",
+   "text": "So nice to meet you, and great to have you with us.",
    "photos": [
-    "events/tal-stage-gesture.webp",
-    "upload:9c0c4b14-image.jpg"
-   ],
-   "avatar_note": "Render as avatar with a warm smile at the end (Tal's request)."
+    "events/tal-stage-gesture.webp"
+   ]
   }
  ]
 }

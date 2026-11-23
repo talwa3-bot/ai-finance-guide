@@ -77,8 +77,13 @@ def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str,
     pdir = Path(photos)
 
     old_words = aligned_words(read_script(avatar_script), Path(avatar), lang)
-    new_text = " ".join(s.get("spoken", s["text"]) for s in spec["segments"] if s["kind"] == "new")
+    # the shared voice-over covers every "new" segment without its own "vo" file
+    shared = [s for s in spec["segments"] if s["kind"] == "new" and not s.get("vo")]
+    new_text = " ".join(s.get("spoken", s["text"]) for s in shared)
     vo_words = aligned_words(new_text, Path(vo), lang)
+    own_vo = {s["id"]: (Path(spec_path).parent / s["vo"]).resolve() for s in spec["segments"] if s.get("vo")}
+    own_words = {k: aligned_words(next(x.get("spoken", x["text"]) for x in spec["segments"] if x["id"] == k), v, lang)
+                 for k, v in own_vo.items()}
 
     parts = []
     for k, seg in enumerate(spec["segments"]):
@@ -97,7 +102,8 @@ def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str,
                  "-r", FPS, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
                  "-af", "aresample=48000", "-ac", "2", "-c:a", "aac", "-b:a", "192k", clip])
         else:
-            a, b = find_span(vo_words, seg.get("spoken", seg["text"]))
+            seg_vo = str(own_vo.get(seg["id"], vo))
+            a, b = find_span(own_words.get(seg["id"], vo_words), seg.get("spoken", seg["text"]))
             a, b = max(a - 0.08, 0), b + 0.35
             dur = b - a
             shots = [pdir / Path(p.replace("upload:", "")).name for p in seg["photos"]]
@@ -111,7 +117,7 @@ def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str,
             lst.write_text("".join(f"file '{p.as_posix()}'\n" for p in sub))
             vid = work / f"{k:02d}_{seg['id']}_v.mp4"
             run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", vid])
-            inputs = ["-i", str(vid), "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", vo]
+            inputs = ["-i", str(vid), "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", seg_vo]
             vf = "[0:v]setsar=1,format=yuv420p[v]"
             if seg.get("label"):
                 lp = work / f"label_{seg['id']}.png"
