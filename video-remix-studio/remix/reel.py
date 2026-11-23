@@ -80,8 +80,8 @@ def aligned_words(script: str, media: Path, lang: str) -> list[tuple[str, float,
                           "-ar", "16000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
     audio = np.frombuffer(raw, np.int16).astype(np.float32) / 32768
     segs, _ = WhisperModel("small", device="cpu", compute_type="int8").transcribe(
-        audio, language=lang, word_timestamps=True, vad_filter=False,
-        initial_prompt=script[:200])
+        audio, language=lang, word_timestamps=True, vad_filter=False)
+    # (no initial_prompt: with the script as a prompt, whisper skipped the opening words)
     asr = [(w.word.strip(), w.start, w.end) for s in segs for w in (s.words or []) if w.word.strip()]
     words = script.split()
     times: list[tuple[float, float] | None] = [None] * len(words)
@@ -162,7 +162,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         ev.append(f"Dialogue: 3,{_t(0.4)},{_t(4.8)},Name,,0,0,0,,{{\\fad(250,250)\\pos(540,{y})}}{m}{name}{m}")
         if role:
             ev.append(f"Dialogue: 3,{_t(0.6)},{_t(4.8)},Role,,0,0,0,,{{\\fad(250,250)\\pos(540,{y + 70})}}{m}{role}{m}")
-    # chunks of up to 3 words, never across a sentence end
+    ev.append(f"Dialogue: 2,{_t(end_card)},{_t(dur)},End,,0,0,0,,{{\\fad(250,0)\\pos(540,1180)}}{m}{cta}{m}")
+    path.write_text(head + "\n".join(ev) + "\n", encoding="utf-8")
+
+
+# ---------------------------------------------------------------- captions (image layer)
+CAP_FONT = BRAND / "AIFinanceSans-Bold.ttf"   # Noto Sans Hebrew + Noto Sans merged
+CAP_Y = 1450          # top of the caption band
+CAP_SIZE = 84
+
+
+def caption_events(words, end_card: float):
+    """(start, end, chunk_words, active_index): up to 3 words, never across a sentence end."""
     chunks, cur = [], []
     for w in words:
         cur.append(w)
@@ -171,20 +182,67 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             cur = []
     if cur:
         chunks.append(cur)
+    ev = []
     for ci, ch in enumerate(chunks):
         nxt = chunks[ci + 1][0][1] if ci + 1 < len(chunks) else ch[-1][2] + 0.3
         for wi, (w, s, e) in enumerate(ch):
-            until = ch[wi + 1][1] if wi + 1 < len(ch) else nxt
-            if s >= end_card:
-                continue
-            parts = []
-            for k, (ww, _, _) in enumerate(ch):
-                ww = ww.replace("{", "").replace("}", "")
-                parts.append(f"{{\\c{ACCENT}}}{ww}{{\\c&H00FFFFFF&}}" if k == wi else ww)
-            pop = "{\\fscx108\\fscy108\\t(0,120,\\fscx100\\fscy100)}" if wi == 0 else ""
-            ev.append(f"Dialogue: 1,{_t(s)},{_t(min(until, end_card))},Cap,,0,0,0,,{pop}{m}{' '.join(parts)}{m}")
-    ev.append(f"Dialogue: 2,{_t(end_card)},{_t(dur)},End,,0,0,0,,{{\\fad(250,0)\\pos(540,1180)}}{m}{cta}{m}")
-    path.write_text(head + "\n".join(ev) + "\n", encoding="utf-8")
+            until = min(ch[wi + 1][1] if wi + 1 < len(ch) else nxt, end_card)
+            if s < end_card and until > s:
+                ev.append((s, until, [x[0] for x in ch], wi))
+    return ev
+
+
+def render_caption(words: list[str], active: int, rtl: bool, path: Path) -> None:
+    """One caption frame: white text with outline, the active word in yellow.
+
+    Pillow + raqm lays the whole line out (correct RTL order and punctuation);
+    the yellow copy is masked to the active word's span.
+    """
+    from PIL import ImageFont
+    font = ImageFont.truetype(str(CAP_FONT), CAP_SIZE)
+    direction = "rtl" if rtl else "ltr"
+    text = " ".join(words)
+    img = Image.new("RGBA", (W, 200), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx, cy = W // 2, 100
+    kw = dict(font=font, anchor="mm", direction=direction)
+    d.text((cx + 4, cy + 5), text, fill=(0, 0, 0, 150), stroke_width=7, stroke_fill=(0, 0, 0, 150), **kw)
+    d.text((cx, cy), text, fill="white", stroke_width=7, stroke_fill="black", **kw)
+    full = font.getlength(text, direction=direction)
+    before = font.getlength(" ".join(words[:active]) + (" " if active else ""), direction=direction)
+    wlen = font.getlength(words[active], direction=direction)
+    if rtl:   # first word sits at the right edge
+        x1 = cx + full / 2 - before
+        x0 = x1 - wlen
+    else:
+        x0 = cx - full / 2 + before
+        x1 = x0 + wlen
+    hi = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(hi).text((cx, cy), text, fill=(255, 210, 63), stroke_width=7, stroke_fill="black", **kw)
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).rectangle((x0 - 6, 0, x1 + 6, 200), fill=255)
+    img.paste(hi, (0, 0), mask)
+    img.save(path)
+
+
+def caption_track(events, rtl: bool, dur: float, workdir: Path) -> Path:
+    """Concat-demuxer list of caption PNGs (transparent gaps), aligned to the timeline."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    blank = workdir / "blank.png"
+    Image.new("RGBA", (W, 200), (0, 0, 0, 0)).save(blank)
+    lines, t = ["ffconcat version 1.0"], 0.0
+    for i, (s, e, ws, a) in enumerate(events):
+        if s > t + 0.01:
+            lines += [f"file '{blank.as_posix()}'", f"duration {s - t:.3f}"]
+        f = workdir / f"cap_{i:03d}.png"
+        render_caption(ws, a, rtl, f)
+        lines += [f"file '{f.as_posix()}'", f"duration {e - s:.3f}"]
+        t = e
+    lines += [f"file '{blank.as_posix()}'", f"duration {max(dur - t, 0.1):.3f}",
+              f"file '{blank.as_posix()}'"]
+    lst = workdir / "captions.ffconcat"
+    lst.write_text("\n".join(lines) + "\n")
+    return lst
 
 
 # ---------------------------------------------------------------- compose
@@ -202,6 +260,9 @@ def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
     spans = sentences(words)
     cta = cta or ("עקבו אחרי AI Finance" if lang == "he" else "Follow AI Finance")
     ass = dest.with_suffix(".ass")
+    end_card_t = dur - 2.6 if dur > 8 else dur
+    caps = caption_track(caption_events(words, end_card_t), lang == "he", dur,
+                         dest.with_name(dest.stem + "_caps"))
     build_ass(words, title, cta, lang, dur, ass, name, role)
 
     # punch-in: every second sentence is shown at 112% (a "jump cut" look)
@@ -231,7 +292,10 @@ def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
                f"[3:v]scale=860:-1,setsar=1[lg2];[b4][lg2]overlay=x=(W-w)/2:y=720:"
                f"enable='gte(t,{end_card:.2f})'[b5];")
         last = "[b5]"
-    fc += (f"{last}drawbox=x=0:y=ih-14:w='iw*t/{dur:.2f}':h=14:color=0xFFD23F@0.95:t=fill[b6];"
+    cap_in = len([x for x in inputs if x == "-i"])
+    inputs += ["-f", "concat", "-safe", "0", "-i", str(caps)]
+    fc += (f"[{cap_in}:v]fps=30,format=rgba[cp];{last}[cp]overlay=x=0:y={CAP_Y}:eof_action=pass[b5c];"
+           f"[b5c]drawbox=x=0:y=ih-14:w='iw*t/{dur:.2f}':h=14:color=0xFFD23F@0.95:t=fill[b6];"
            f"[b6]subtitles={ass.as_posix()}[v]")
     cmd = ["ffmpeg", "-loglevel", "error", "-y", *inputs, "-filter_complex", fc, "-map", "[v]",
            "-map", "0:a", "-t", f"{dur:.2f}", "-r", "30", "-c:v", "libx264", "-preset", "medium",

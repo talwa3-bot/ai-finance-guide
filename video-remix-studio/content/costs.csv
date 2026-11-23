@@ -11,3 +11,7 @@ video,kind,engine,look,seconds,cost_usd,time
 08_he,render,avatar_iii,5df8597634f64beea7062725fb4c51a7,21.0,0.35,2026-11-22 13:09
 02_he,test,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,3.0,0.1,2026-11-22 13:20
 02_he,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,23.4,1.1500,2026-11-22 13:30
+intro_he,audio,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,26.2,0.0634,2026-11-23 09:00
+intro_he,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,26.2,1.3000,2026-11-23 09:10
+intro_en,audio,elevenlabs eleven_v3,aCOTFRhimzj4r2TMDgV8,26.0,0.0731,2026-11-23 09:15
+intro_en,render,heygen-avatar-6-turbo,496216089094426aba575d3c1a583bef,26.0,1.2500,2026-11-23 09:25
