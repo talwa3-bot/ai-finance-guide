@@ -57,15 +57,49 @@ def label_png(text: str, path: Path, rtl: bool) -> None:
     img.save(path)
 
 
-def photo_clip(photo: Path, dur: float, out: Path, zoom_in: bool) -> None:
-    """Ken Burns: cover-crop the photo to a square and slowly zoom."""
+XF = 0.4   # crossfade length between shots and segments (seconds)
+
+
+def photo_clip(photo: Path, dur: float, out: Path, zoom_in: bool = True) -> None:
+    """Ken Burns: cover-crop the photo to a square and zoom slowly and steadily.
+
+    Zooming at 3x resolution keeps the per-frame crop movement sub-pixel at the
+    output size, which removes the shake of a plain zoompan.
+    """
     frames = max(int(round(dur * FPS)), 1)
-    z = f"min(1+0.10*on/{frames},1.10)" if zoom_in else f"max(1.10-0.10*on/{frames},1.0)"
+    big = SQ * 3
+    z = f"1+0.06*on/{frames}"
     run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", photo, "-vf",
-         f"scale={SQ * 2}:{SQ * 2}:force_original_aspect_ratio=increase,crop={SQ * 2}:{SQ * 2},"
+         f"scale={big}:{big}:force_original_aspect_ratio=increase:flags=lanczos,crop={big}:{big},"
          f"zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={SQ}x{SQ}:fps={FPS},"
          f"setsar=1,format=yuv420p", "-frames:v", frames, "-c:v", "libx264", "-preset", "veryfast",
          "-crf", "18", out])
+
+
+def duration(p: Path) -> float:
+    return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                                 "csv=p=0", str(p)], capture_output=True, text=True).stdout)
+
+
+def xfade_filter(lengths: list[float], d: float = XF) -> str:
+    """filter_complex chain cross-fading inputs 0..n-1 (video only) into [vx].
+
+    Each input is padded by d (last frame held), so the fades eat the padding and
+    shot k still starts at sum(lengths[:k]): the picture stays in sync with audio
+    that is simply concatenated.
+    """
+    n = len(lengths)
+    fc = "".join(f"[{i}:v]tpad=stop_mode=clone:stop_duration={d},settb=AVTB,fps={FPS},"
+                 f"format=yuv420p[p{i}];" for i in range(n))
+    if n == 1:
+        return fc + "[p0]null[vx]"
+    prev, off = "p0", 0.0
+    for i in range(1, n):
+        off += lengths[i - 1]
+        out = "vx" if i == n - 1 else f"x{i}"
+        fc += f"[{prev}][p{i}]xfade=transition=fade:duration={d}:offset={off:.3f}[{out}];"
+        prev = out
+    return fc.rstrip(";")
 
 
 def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str, out: str) -> Path:
@@ -111,12 +145,12 @@ def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str,
             sub = []
             for i, ph in enumerate(shots):
                 sp = work / f"{k:02d}_{seg['id']}_p{i}.mp4"
-                photo_clip(ph, each, sp, zoom_in=(i % 2 == 0))
+                photo_clip(ph, each, sp)
                 sub.append(sp)
-            lst = work / f"{k:02d}_{seg['id']}.txt"
-            lst.write_text("".join(f"file '{p.as_posix()}'\n" for p in sub))
             vid = work / f"{k:02d}_{seg['id']}_v.mp4"
-            run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", vid])
+            run(["ffmpeg", "-loglevel", "error", "-y", *sum((["-i", str(p)] for p in sub), []),
+                 "-filter_complex", xfade_filter([duration(p) for p in sub]), "-map", "[vx]",
+                 "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", vid])
             inputs = ["-i", str(vid), "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", seg_vo]
             vf = "[0:v]setsar=1,format=yuv420p[v]"
             if seg.get("label"):
@@ -132,11 +166,14 @@ def build(spec_path: str, avatar: str, avatar_script: str, vo: str, photos: str,
 
     # concatenate with a re-encode so timestamps are clean
     n = len(parts)
+    lengths = [duration(p) for p in parts]
     ins = sum((["-i", str(p)] for p in parts), [])
-    fc = "".join(f"[{i}:v][{i}:a]" for i in range(n)) + f"concat=n={n}:v=1:a=1[v][a]"
+    fc = (xfade_filter(lengths) + ";" + "".join(f"[{i}:a]" for i in range(n))
+          + f"concat=n={n}:v=0:a=1[a]")
     square = work / "square.mp4"
-    run(["ffmpeg", "-loglevel", "error", "-y", *ins, "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
-         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-c:a", "aac", "-b:a", "192k", square])
+    run(["ffmpeg", "-loglevel", "error", "-y", *ins, "-filter_complex", fc, "-map", "[vx]", "-map", "[a]",
+         "-t", f"{sum(lengths):.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+         "-c:a", "aac", "-b:a", "192k", square])
 
     script = " ".join(s["text"] for s in spec["segments"])
     return make_reel(str(square), script, spec["title"], lang, out, spec.get("cta"),

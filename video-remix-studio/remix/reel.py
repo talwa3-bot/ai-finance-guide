@@ -252,7 +252,8 @@ def probe_duration(p: Path) -> float:
 
 
 def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
-              cta: str | None = None, name: str | None = None, role: str | None = None) -> Path:
+              cta: str | None = None, name: str | None = None, role: str | None = None,
+              punch: bool = False) -> Path:
     src, dest = Path(avatar).resolve(), Path(out).resolve()
     assets = brand_assets()
     dur = probe_duration(src)
@@ -266,7 +267,9 @@ def make_reel(avatar: str, script: str, title: str, lang: str, out: str,
     build_ass(words, title, cta, lang, dur, ass, name, role)
 
     # punch-in: every second sentence is shown at 112% (a "jump cut" look)
-    zoom_on = "+".join(f"between(t,{a:.2f},{b:.2f})" for i, (a, b) in enumerate(spans) if i % 2) or "0"
+    # optional punch-in on alternate sentences; off by default (it reads as "jumping")
+    zoom_on = ("+".join(f"between(t,{a:.2f},{b:.2f})" for i, (a, b) in enumerate(spans) if i % 2)
+               if punch else "") or "0"
     z = f"(1+0.12*({zoom_on}))"
     end_card = dur - 2.6 if dur > 8 else dur
     logo = assets["logo"]
