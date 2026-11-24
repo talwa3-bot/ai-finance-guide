@@ -1,0 +1,119 @@
+{
+ "lang": "en",
+ "title": "AI Finance: what we do",
+ "name": "Tal Wallenstein, CPA",
+ "role": "Co-founder · AI Finance",
+ "cta": "Great to have you with us!",
+ "segments": [
+  {
+   "id": "A",
+   "kind": "old",
+   "text": "Hi, I'm Tal Wallenstein. CPA, certified board director, and Big Four alumna."
+  },
+  {
+   "id": "R",
+   "kind": "old",
+   "label": "Tal & Roei",
+   "text": "With my brother Roei, I co-founded AI Finance."
+  },
+  {
+   "id": "H",
+   "kind": "old",
+   "text": "We help finance teams bring AI into their daily work: lectures, workshops, and hands-on guidance."
+  },
+  {
+   "id": "S1",
+   "kind": "new",
+   "label": "Lectures",
+   "text": "Lectures for executives and finance leaders: what AI can already do in finance, what AI agents mean for managers, how to choose tools and controls, and where to start.",
+   "photos": [
+    "events/tal-main-stage.webp",
+    "events/conference-stage.webp"
+   ]
+  },
+  {
+   "id": "S2",
+   "kind": "new",
+   "label": "Workshops",
+   "text": "Hands-on workshops for finance teams, FP&A, accounting and payroll. We practice on real tasks, with the tools your company has approved, and we check every output.",
+   "photos": [
+    "events/hands-on-room.webp",
+    "events/table-practice.webp",
+    "events/roei-workshop.webp"
+   ]
+  },
+  {
+   "id": "S3",
+   "kind": "new",
+   "label": "Process guidance",
+   "text": "Process guidance: we map your recurring tasks, choose one process, and build a measurable pilot before you scale.",
+   "photos": [
+    "events/financial-demo-room.webp",
+    "events/team-session.webp"
+   ]
+  },
+  {
+   "id": "S4",
+   "kind": "new",
+   "label": "Tailored to you",
+   "text": "Everything is tailored to your organization, whether you work with ChatGPT, Claude, Copilot or Gemini, and done together with your information security team.",
+   "photos": [
+    "events/workshop-conversation.webp",
+    "events/tal-screen.webp"
+   ]
+  },
+  {
+   "id": "S5",
+   "kind": "new",
+   "label": "Courses",
+   "text": "And for individuals, open courses with the National Center for Director Training.",
+   "photos": [
+    "events/tal-classroom.webp"
+   ]
+  },
+  {
+   "id": "M",
+   "kind": "new",
+   "label": "Human in the loop",
+   "text": "Our motto today is human in the loop. Not a machine that replaces people, but one that pushes people to move forward together with AI, and build a new, richer world of content.",
+   "photos": [
+    "events/team-session.webp",
+    "events/workshop-conversation.webp"
+   ],
+   "vo": "audio/motto_en.mp3"
+  },
+  {
+   "id": "K",
+   "kind": "old",
+   "text": "The future of AI starts with people."
+  },
+  {
+   "id": "J",
+   "kind": "new",
+   "text": "This is exactly where you come in.",
+   "photos": [
+    "events/table-audience-view.webp"
+   ],
+   "vo": "audio/new_vo_en.mp3"
+  },
+  {
+   "id": "L1",
+   "kind": "new",
+   "label": "With a smile",
+   "text": "And all of it with a smile.",
+   "photos": [
+    "upload:9c0c4b14-image.jpg"
+   ],
+   "vo": "audio/new_vo_en.mp3"
+  },
+  {
+   "id": "L2",
+   "kind": "new",
+   "text": "So nice to meet you, and great to have you with us.",
+   "photos": [
+    "events/tal-stage-gesture.webp"
+   ],
+   "vo": "audio/new_vo_en.mp3"
+  }
+ ]
+}
